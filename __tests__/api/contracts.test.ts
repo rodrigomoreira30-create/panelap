@@ -270,6 +270,6 @@ describe('POST /api/contracts/[id]/approve', () => {
     )
 
     expect(json.data.status).toBe('sent')
-    expect(json.zapDoc).toBeDefined()
+    expect(json.zapDoc).toBeUndefined()
   })
 })

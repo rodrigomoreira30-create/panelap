@@ -22,6 +22,13 @@ export async function POST(
   const { event, template } = contract
   const { lead } = event
 
+  if (!lead) {
+    return NextResponse.json(
+      { error: 'Lead not found for this event' },
+      { status: 422 }
+    )
+  }
+
   const filledContent = fillTemplate(template.content, buildContractData(lead))
   const base64Content = Buffer.from(filledContent).toString('base64')
 
@@ -48,5 +55,5 @@ export async function POST(
     },
   })
 
-  return NextResponse.json({ data: updated, zapDoc })
+  return NextResponse.json({ data: updated })
 }
