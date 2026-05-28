@@ -1,3 +1,4 @@
+import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import { TemplateListClient } from './TemplateListClient'
 
@@ -13,7 +14,7 @@ export default async function ContractTemplatesPage({
     select: { id: true },
   })
 
-  if (!band) return <div>Banda não encontrada.</div>
+  if (!band) return notFound()
 
   const templates = await prisma.contractTemplate.findMany({
     where: { band_id: band.id },
@@ -22,7 +23,7 @@ export default async function ContractTemplatesPage({
 
   return (
     <div className="p-6">
-      <TemplateListClient templates={templates} bandSlug={bandSlug} />
+      <TemplateListClient templates={templates} />
     </div>
   )
 }

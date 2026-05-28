@@ -15,10 +15,9 @@ type Template = {
 
 type Props = {
   templates: Template[]
-  bandSlug: string
 }
 
-export function TemplateListClient({ templates, bandSlug: _bandSlug }: Props) {
+export function TemplateListClient({ templates }: Props) {
   const router = useRouter()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)

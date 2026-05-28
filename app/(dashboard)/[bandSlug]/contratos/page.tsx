@@ -1,3 +1,4 @@
+import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import { ContractListClient } from './ContractListClient'
 
@@ -13,7 +14,7 @@ export default async function ContratosPage({
     select: { id: true },
   })
 
-  if (!band) return <div>Banda não encontrada.</div>
+  if (!band) return notFound()
 
   const contracts = await prisma.contract.findMany({
     where: { event: { band_id: band.id } },
