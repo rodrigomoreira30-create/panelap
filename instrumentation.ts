@@ -4,5 +4,8 @@ export async function register() {
       '@/lib/contracts/on-lead-closed'
     )
     registerLeadClosedContractListener()
+
+    const { registerProductionLeadClosedListener } = await import('@/lib/production/on-lead-closed')
+    registerProductionLeadClosedListener()
   }
 }
