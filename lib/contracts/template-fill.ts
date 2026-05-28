@@ -13,9 +13,10 @@ export function fillTemplate(content: string, data: Record<string, string>): str
  * Returns an array of unique variable names found in {{...}} patterns in the template.
  */
 export function extractVariables(content: string): string[] {
-  const matches = content.matchAll(/\{\{([^}]+)\}\}/g)
+  const regex = /\{\{([^}]+)\}\}/g
   const seen = new Set<string>()
-  for (const match of matches) {
+  let match: RegExpExecArray | null
+  while ((match = regex.exec(content)) !== null) {
     seen.add(match[1].trim())
   }
   return Array.from(seen)
