@@ -51,6 +51,7 @@ export function TemplateEditor({ initialName = '', initialContent = '', isDefaul
           value={name}
           onChange={(e) => setName(e.target.value)}
           maxLength={255}
+          required
           className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           placeholder="Ex: Contrato Padrão de Casamento"
         />

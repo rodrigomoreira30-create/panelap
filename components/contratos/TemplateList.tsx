@@ -48,7 +48,14 @@ export function TemplateList({ templates, onEdit, onDelete, onCreate }: Props) {
                 <button onClick={() => onEdit(template.id)} className="text-sm text-blue-600 hover:text-blue-800">
                   Editar
                 </button>
-                <button onClick={() => onDelete(template.id)} className="text-sm text-red-600 hover:text-red-800">
+                <button
+                  onClick={() => {
+                    if (window.confirm(`Excluir o template "${template.name}"?`)) {
+                      onDelete(template.id)
+                    }
+                  }}
+                  className="text-sm text-red-600 hover:text-red-800"
+                >
                   Excluir
                 </button>
               </div>

@@ -22,7 +22,7 @@ export function ContractReview({ contract, onApprove }: Props) {
   const [error, setError] = useState<string | null>(null)
 
   const filledContent = contract.event.lead
-    ? fillTemplate(contract.template.content, buildContractData(contract.event.lead as LeadForContract))
+    ? fillTemplate(contract.template.content, buildContractData(contract.event.lead))
     : contract.template.content
 
   async function handleApprove() {
