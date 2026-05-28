@@ -102,7 +102,11 @@ describe('POST /api/webhooks/whatsapp', () => {
 
     expect(response.status).toBe(200)
     const findCall = vi.mocked(prisma.lead.findFirst).mock.calls[0]
-    expect(findCall[0].where.phone.contains).toBe('5511999999999')
+    const phoneFilter = findCall[0]?.where?.phone
+    const containsValue = typeof phoneFilter === 'object' && phoneFilter !== null && 'contains' in phoneFilter
+      ? (phoneFilter as { contains: string }).contains
+      : undefined
+    expect(containsValue).toBe('5511999999999')
   })
 
   it('stores message for existing lead', async () => {
