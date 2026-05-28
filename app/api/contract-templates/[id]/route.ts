@@ -1,18 +1,8 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@/lib/generated/prisma/client'
+import { getSessionUser } from '@/lib/auth/session'
 import { templateUpdateSchema } from '@/lib/validations/contract'
-
-async function getSessionUser() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-  return prisma.user.findUnique({
-    where: { supabase_id: user.id },
-    select: { band_id: true },
-  })
-}
 
 export async function GET(
   _request: Request,
@@ -47,10 +37,24 @@ export async function PATCH(
   const band_id = dbUser.band_id
 
   if (parsed.data.is_default) {
-    await prisma.contractTemplate.updateMany({
-      where: { band_id, is_default: true },
-      data: { is_default: false },
-    })
+    try {
+      const [, updated] = await prisma.$transaction([
+        prisma.contractTemplate.updateMany({
+          where: { band_id, is_default: true },
+          data: { is_default: false },
+        }),
+        prisma.contractTemplate.update({
+          where: { id, band_id },
+          data: parsed.data,
+        }),
+      ])
+      return NextResponse.json({ data: updated })
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2025') {
+        return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      }
+      throw e
+    }
   }
 
   try {

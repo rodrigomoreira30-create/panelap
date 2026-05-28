@@ -1,17 +1,7 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/prisma'
+import { getSessionUser } from '@/lib/auth/session'
 import { templateCreateSchema } from '@/lib/validations/contract'
-
-async function getSessionUser() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-  return prisma.user.findUnique({
-    where: { supabase_id: user.id },
-    select: { band_id: true },
-  })
-}
 
 export async function GET(_request: Request) {
   const dbUser = await getSessionUser()
@@ -39,10 +29,21 @@ export async function POST(request: Request) {
   const band_id = dbUser.band_id
 
   if (is_default) {
-    await prisma.contractTemplate.updateMany({
-      where: { band_id, is_default: true },
-      data: { is_default: false },
-    })
+    const [, template] = await prisma.$transaction([
+      prisma.contractTemplate.updateMany({
+        where: { band_id, is_default: true },
+        data: { is_default: false },
+      }),
+      prisma.contractTemplate.create({
+        data: {
+          band_id,
+          name,
+          content,
+          is_default: true,
+        },
+      }),
+    ])
+    return NextResponse.json({ data: template }, { status: 201 })
   }
 
   const template = await prisma.contractTemplate.create({
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
       band_id,
       name,
       content,
-      is_default: is_default ?? false,
+      is_default: false,
     },
   })
 

@@ -16,6 +16,7 @@ vi.mock('@/lib/prisma', () => ({
     user: {
       findUnique: vi.fn(),
     },
+    $transaction: vi.fn((ops: unknown[]) => Promise.all(ops)),
   },
 }))
 
