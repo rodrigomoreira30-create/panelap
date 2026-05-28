@@ -22,8 +22,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true }) // ignore unknown shapes gracefully
   }
 
-  const docToken = (payload as { token: string; status?: string }).token
-  const status = (payload as { token: string; status?: string }).status
+  const p = payload as Record<string, unknown>
+  const docToken = p['token'] as string
+  const status = typeof p['status'] === 'string' ? p['status'] : undefined
 
   // 3. Find contract by zapsign_doc_id
   const contract = await prisma.contract.findFirst({
@@ -38,16 +39,20 @@ export async function POST(request: Request) {
   // 5. If status is 'signed', update contract:
   //    status: 'signed', signed_at: new Date()
   if (status === 'signed') {
-    await prisma.contract.update({
-      where: { id: contract.id },
-      data: {
-        status: 'signed',
-        signed_at: new Date(),
-      },
-    })
-    // 6. Emit internal event
-    const { eventBus } = await import('@/lib/events/internal-bus')
-    eventBus.emit('contract.signed', { contract_id: contract.id })
+    try {
+      await prisma.contract.update({
+        where: { id: contract.id },
+        data: {
+          status: 'signed',
+          signed_at: new Date(),
+        },
+      })
+      // 6. Emit internal event
+      const { eventBus } = await import('@/lib/events/internal-bus')
+      eventBus.emit('contract.signed', { contract_id: contract.id })
+    } catch (err) {
+      console.error('ZapSign webhook: failed to update contract', err)
+    }
   }
 
   return NextResponse.json({ ok: true })
