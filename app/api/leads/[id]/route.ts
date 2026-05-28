@@ -54,19 +54,27 @@ export async function PATCH(
   })
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const updated = await prisma.lead.update({
-    where: { id },
-    data: {
-      ...parsed.data,
-      event_date: parsed.data.event_date ? new Date(parsed.data.event_date) : undefined,
-    },
-  })
+  try {
+    const updated = await prisma.lead.update({
+      where: { id, band_id: sessionUser.band_id },
+      data: {
+        ...parsed.data,
+        event_date: parsed.data.event_date === undefined
+          ? undefined
+          : parsed.data.event_date
+            ? new Date(parsed.data.event_date)
+            : null,
+      },
+    })
 
-  if (parsed.data.status === 'closed' && existing.status !== 'closed') {
-    eventBus.emit('lead.closed', { lead_id: updated.id, band_id: updated.band_id })
+    if (parsed.data.status === 'closed' && existing.status !== 'closed') {
+      eventBus.emit('lead.closed', { lead_id: updated.id, band_id: updated.band_id })
+    }
+
+    return NextResponse.json({ data: updated })
+  } catch {
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
-
-  return NextResponse.json({ data: updated })
 }
 
 export async function DELETE(
@@ -86,6 +94,10 @@ export async function DELETE(
   })
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  await prisma.lead.delete({ where: { id } })
-  return NextResponse.json({ data: { deleted: true } })
+  try {
+    await prisma.lead.delete({ where: { id } })
+    return NextResponse.json({ data: { deleted: true } })
+  } catch {
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 }

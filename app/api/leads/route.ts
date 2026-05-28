@@ -18,6 +18,11 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const status = searchParams.get('status')
 
+  const VALID_STATUSES = ['new_lead', 'attending', 'proposal_sent', 'negotiation', 'closed', 'lost']
+  if (status && !VALID_STATUSES.includes(status)) {
+    return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
+  }
+
   const leads = await prisma.lead.findMany({
     where: {
       band_id: sessionUser.band_id,
@@ -44,13 +49,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 })
   }
 
-  const lead = await prisma.lead.create({
-    data: {
-      ...parsed.data,
-      band_id: sessionUser.band_id,
-      event_date: parsed.data.event_date ? new Date(parsed.data.event_date) : undefined,
-    },
-  })
-
-  return NextResponse.json({ data: lead }, { status: 201 })
+  try {
+    const lead = await prisma.lead.create({
+      data: {
+        ...parsed.data,
+        band_id: sessionUser.band_id,
+        event_date: parsed.data.event_date ? new Date(parsed.data.event_date) : undefined,
+      },
+    })
+    return NextResponse.json({ data: lead }, { status: 201 })
+  } catch {
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 }
