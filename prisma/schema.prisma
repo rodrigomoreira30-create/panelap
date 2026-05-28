@@ -1,0 +1,248 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  admin
+  commercial
+  producer
+  musician
+}
+
+enum LeadStatus {
+  new_lead
+  attending
+  proposal_sent
+  negotiation
+  closed
+  lost
+}
+
+enum EventType {
+  wedding
+  party
+  show
+  corporate
+  other
+}
+
+enum ContractStatus {
+  draft
+  pending_review
+  sent
+  signed
+}
+
+enum EventStatus {
+  contracted
+  active
+  done
+}
+
+enum DocumentType {
+  contract
+  rider
+  briefing
+  map
+  other
+}
+
+enum MessageDirection {
+  in
+  out
+}
+
+enum MusicianConfirmStatus {
+  pending
+  confirmed
+  declined
+}
+
+enum SaasPlan {
+  starter
+  pro
+  enterprise
+}
+
+model Band {
+  id         String   @id @default(cuid())
+  name       String
+  slug       String   @unique
+  plan       SaasPlan @default(starter)
+  logo_url   String?
+  asaas_id   String?
+  created_at DateTime @default(now())
+
+  users              User[]
+  leads              Lead[]
+  events             Event[]
+  contract_templates ContractTemplate[]
+  documents          Document[]
+}
+
+model User {
+  id          String   @id @default(cuid())
+  band_id     String
+  supabase_id String   @unique
+  name        String
+  email       String
+  role        UserRole
+  phone       String?
+  avatar_url  String?
+  created_at  DateTime @default(now())
+
+  band               Band            @relation(fields: [band_id], references: [id], onDelete: Cascade)
+  assigned_leads     Lead[]          @relation("AssignedLeads")
+  event_musicians    EventMusician[]
+  reviewed_contracts Contract[]      @relation("ReviewedContracts")
+  uploaded_docs      Document[]
+}
+
+model Lead {
+  id              String     @id @default(cuid())
+  band_id         String
+  client_name     String
+  phone           String
+  event_type      EventType
+  event_date      DateTime?
+  city            String?
+  venue_name      String?
+  venue_has_sound Boolean    @default(false)
+  venue_has_light Boolean    @default(false)
+  budget          Float?
+  status          LeadStatus @default(new_lead)
+  assigned_to     String?
+  observations    String?
+  created_at      DateTime   @default(now())
+  updated_at      DateTime   @updatedAt
+
+  band     Band      @relation(fields: [band_id], references: [id], onDelete: Cascade)
+  assignee User?     @relation("AssignedLeads", fields: [assigned_to], references: [id])
+  messages Message[]
+  event    Event?
+}
+
+model Event {
+  id                   String      @id @default(cuid())
+  band_id              String
+  lead_id              String      @unique
+  client_name          String
+  event_type           EventType
+  event_date           DateTime
+  event_time           String?
+  venue_name           String
+  venue_address        String?
+  venue_has_sound      Boolean     @default(false)
+  venue_has_light      Boolean     @default(false)
+  value                Float
+  status               EventStatus @default(contracted)
+  technical_visit_date DateTime?
+  notes                String?
+  created_at           DateTime    @default(now())
+  updated_at           DateTime    @updatedAt
+
+  band            Band            @relation(fields: [band_id], references: [id], onDelete: Cascade)
+  lead            Lead            @relation(fields: [lead_id], references: [id])
+  contracts       Contract[]
+  checklists      Checklist[]
+  event_musicians EventMusician[]
+  documents       Document[]
+}
+
+model ContractTemplate {
+  id         String   @id @default(cuid())
+  band_id    String
+  name       String
+  content    String
+  is_default Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  band      Band       @relation(fields: [band_id], references: [id], onDelete: Cascade)
+  contracts Contract[]
+}
+
+model Contract {
+  id             String         @id @default(cuid())
+  event_id       String
+  template_id    String
+  pdf_url        String?
+  zapsign_doc_id String?
+  zapsign_link   String?
+  status         ContractStatus @default(draft)
+  reviewed_by    String?
+  signed_at      DateTime?
+  created_at     DateTime       @default(now())
+  updated_at     DateTime       @updatedAt
+
+  event    Event            @relation(fields: [event_id], references: [id], onDelete: Cascade)
+  template ContractTemplate @relation(fields: [template_id], references: [id])
+  reviewer User?            @relation("ReviewedContracts", fields: [reviewed_by], references: [id])
+}
+
+model Checklist {
+  id          String  @id @default(cuid())
+  event_id    String
+  title       String
+  assigned_to String?
+
+  event Event          @relation(fields: [event_id], references: [id], onDelete: Cascade)
+  items ChecklistItem[]
+}
+
+model ChecklistItem {
+  id           String    @id @default(cuid())
+  checklist_id String
+  description  String
+  done         Boolean   @default(false)
+  due_date     DateTime?
+
+  checklist Checklist @relation(fields: [checklist_id], references: [id], onDelete: Cascade)
+}
+
+model EventMusician {
+  id           String                @id @default(cuid())
+  event_id     String
+  user_id      String
+  instrument   String?
+  status       MusicianConfirmStatus @default(pending)
+  confirmed_at DateTime?
+
+  event Event @relation(fields: [event_id], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([event_id, user_id])
+}
+
+model Document {
+  id          String       @id @default(cuid())
+  band_id     String
+  event_id    String?
+  type        DocumentType
+  file_url    String
+  file_name   String
+  uploaded_by String
+  created_at  DateTime     @default(now())
+
+  band     Band   @relation(fields: [band_id], references: [id], onDelete: Cascade)
+  event    Event? @relation(fields: [event_id], references: [id])
+  uploader User   @relation(fields: [uploaded_by], references: [id])
+}
+
+model Message {
+  id        String           @id @default(cuid())
+  lead_id   String
+  direction MessageDirection
+  content   String
+  sent_by   String
+  sent_at   DateTime         @default(now())
+
+  lead Lead @relation(fields: [lead_id], references: [id], onDelete: Cascade)
+}
