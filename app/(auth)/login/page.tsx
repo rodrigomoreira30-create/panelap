@@ -29,16 +29,20 @@ export default function LoginPage() {
       return
     }
 
-    const res = await fetch('/api/me')
-    const { bandSlug, error: apiError } = await res.json()
-
-    if (apiError || !bandSlug) {
-      setError('Usuário não encontrado no sistema.')
+    try {
+      const res = await fetch('/api/me')
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const { bandSlug, error: apiError } = await res.json()
+      if (apiError || !bandSlug) {
+        setError('Usuário não encontrado no sistema.')
+        setLoading(false)
+        return
+      }
+      router.push(`/${bandSlug}`)
+    } catch {
+      setError('Erro ao carregar dados. Tente novamente.')
       setLoading(false)
-      return
     }
-
-    router.push(`/${bandSlug}`)
   }
 
   return (

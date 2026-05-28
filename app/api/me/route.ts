@@ -14,6 +14,7 @@ export async function GET() {
   })
 
   if (!dbUser) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+  if (!dbUser.band) return NextResponse.json({ error: 'Band not found' }, { status: 404 })
 
   return NextResponse.json({ bandSlug: dbUser.band.slug })
 }
