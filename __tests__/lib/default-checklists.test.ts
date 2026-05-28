@@ -18,10 +18,22 @@ describe('getDefaultChecklist', () => {
     expect(items.length).toBeGreaterThan(0)
   })
 
-  it('todos os itens têm description não vazia', () => {
-    const items = getDefaultChecklist('corporate')
-    items.forEach(item => {
-      expect(item.description.trim().length).toBeGreaterThan(0)
-    })
+  it('retorna itens para festa', () => {
+    const items = getDefaultChecklist('party')
+    expect(items.length).toBeGreaterThan(0)
+  })
+
+  it('retorna itens para tipo other', () => {
+    const items = getDefaultChecklist('other')
+    expect(items.length).toBeGreaterThan(0)
+  })
+
+  it('todos os itens de todos os tipos têm description não vazia', () => {
+    for (const type of ['wedding', 'show', 'corporate', 'party', 'other', 'unknown']) {
+      const items = getDefaultChecklist(type)
+      items.forEach(item => {
+        expect(item.description.trim().length).toBeGreaterThan(0)
+      })
+    }
   })
 })
