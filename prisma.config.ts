@@ -9,8 +9,8 @@ export default defineConfig({
   migrations: {
     path: "prisma/migrations",
   },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   datasource: {
     url: process.env["DATABASE_URL"] ?? (() => { throw new Error("DATABASE_URL env var is not set") })(),
-    directUrl: process.env["DIRECT_URL"],
-  },
+  } as any,
 });
