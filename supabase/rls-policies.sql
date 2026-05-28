@@ -21,31 +21,41 @@ RETURNS TEXT AS $$
   SELECT band_id FROM "User"
   WHERE supabase_id = auth.uid()::text
   LIMIT 1;
-$$ LANGUAGE sql SECURITY DEFINER;
+$$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp;
 
 -- Band policies
 CREATE POLICY "band_own" ON "Band"
-  USING (id = auth_band_id());
+  USING (id = auth_band_id())
+  WITH CHECK (id = auth_band_id());
 
 -- User policies
 CREATE POLICY "user_own_band" ON "User"
-  USING (band_id = auth_band_id());
+  USING (band_id = auth_band_id())
+  WITH CHECK (band_id = auth_band_id());
 
 -- Lead policies
 CREATE POLICY "lead_own_band" ON "Lead"
-  USING (band_id = auth_band_id());
+  USING (band_id = auth_band_id())
+  WITH CHECK (band_id = auth_band_id());
 
 -- Event policies
 CREATE POLICY "event_own_band" ON "Event"
-  USING (band_id = auth_band_id());
+  USING (band_id = auth_band_id())
+  WITH CHECK (band_id = auth_band_id());
 
 -- ContractTemplate policies
 CREATE POLICY "template_own_band" ON "ContractTemplate"
-  USING (band_id = auth_band_id());
+  USING (band_id = auth_band_id())
+  WITH CHECK (band_id = auth_band_id());
 
 -- Contract policies (via event → band)
 CREATE POLICY "contract_own_band" ON "Contract"
   USING (
+    event_id IN (
+      SELECT id FROM "Event" WHERE band_id = auth_band_id()
+    )
+  )
+  WITH CHECK (
     event_id IN (
       SELECT id FROM "Event" WHERE band_id = auth_band_id()
     )
@@ -54,6 +64,11 @@ CREATE POLICY "contract_own_band" ON "Contract"
 -- Checklist policies (via event → band)
 CREATE POLICY "checklist_own_band" ON "Checklist"
   USING (
+    event_id IN (
+      SELECT id FROM "Event" WHERE band_id = auth_band_id()
+    )
+  )
+  WITH CHECK (
     event_id IN (
       SELECT id FROM "Event" WHERE band_id = auth_band_id()
     )
@@ -67,6 +82,13 @@ CREATE POLICY "checklist_item_own_band" ON "ChecklistItem"
       JOIN "Event" e ON e.id = c.event_id
       WHERE e.band_id = auth_band_id()
     )
+  )
+  WITH CHECK (
+    checklist_id IN (
+      SELECT c.id FROM "Checklist" c
+      JOIN "Event" e ON e.id = c.event_id
+      WHERE e.band_id = auth_band_id()
+    )
   );
 
 -- EventMusician policies (via event → band)
@@ -75,15 +97,26 @@ CREATE POLICY "event_musician_own_band" ON "EventMusician"
     event_id IN (
       SELECT id FROM "Event" WHERE band_id = auth_band_id()
     )
+  )
+  WITH CHECK (
+    event_id IN (
+      SELECT id FROM "Event" WHERE band_id = auth_band_id()
+    )
   );
 
 -- Document policies
 CREATE POLICY "document_own_band" ON "Document"
-  USING (band_id = auth_band_id());
+  USING (band_id = auth_band_id())
+  WITH CHECK (band_id = auth_band_id());
 
 -- Message policies (via lead → band)
 CREATE POLICY "message_own_band" ON "Message"
   USING (
+    lead_id IN (
+      SELECT id FROM "Lead" WHERE band_id = auth_band_id()
+    )
+  )
+  WITH CHECK (
     lead_id IN (
       SELECT id FROM "Lead" WHERE band_id = auth_band_id()
     )
