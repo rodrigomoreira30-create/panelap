@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext } from 'react'
+import type { ReactNode } from 'react'
 import type { Band, SessionUser } from '@/types'
 
 interface BandContextValue {
@@ -14,7 +15,7 @@ export function BandProvider({
   band,
   user,
   children,
-}: BandContextValue & { children: React.ReactNode }) {
+}: BandContextValue & { children: ReactNode }) {
   return (
     <BandContext.Provider value={{ band, user }}>
       {children}

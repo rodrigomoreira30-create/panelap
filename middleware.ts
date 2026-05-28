@@ -27,7 +27,11 @@ export async function middleware(request: NextRequest) {
 
   if (isDashboard && !user) {
     const loginUrl = new URL('/login', request.url)
-    return NextResponse.redirect(loginUrl)
+    const redirectResponse = NextResponse.redirect(loginUrl)
+    supabaseResponse.cookies.getAll().forEach(cookie =>
+      redirectResponse.cookies.set(cookie.name, cookie.value)
+    )
+    return redirectResponse
   }
 
   return supabaseResponse

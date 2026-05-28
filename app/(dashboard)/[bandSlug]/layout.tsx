@@ -22,7 +22,7 @@ export default async function DashboardLayout({
     include: { band: true },
   })
 
-  if (!dbUser || dbUser.band.slug !== bandSlug) redirect('/login')
+  if (!dbUser || !dbUser.band || dbUser.band.slug !== bandSlug) redirect('/login')
 
   const sessionUser: SessionUser = {
     id: dbUser.id,
