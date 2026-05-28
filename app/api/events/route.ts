@@ -13,7 +13,7 @@ export async function GET(request: Request) {
   const VALID_STATUSES = ['contracted', 'active', 'done']
   const statusFilter = status && VALID_STATUSES.includes(status)
     ? { status: status as 'contracted' | 'active' | 'done' }
-    : { status: { in: ['contracted', 'active'] as const } }
+    : { status: { in: ['contracted', 'active'] as ('contracted' | 'active')[] } }
 
   const events = await prisma.event.findMany({
     where: { band_id: sessionUser.band_id, ...statusFilter },
