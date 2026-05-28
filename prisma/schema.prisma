@@ -104,6 +104,9 @@ model User {
   event_musicians    EventMusician[]
   reviewed_contracts Contract[]      @relation("ReviewedContracts")
   uploaded_docs      Document[]
+
+  @@unique([band_id, email])
+  @@index([band_id])
 }
 
 model Lead {
@@ -117,7 +120,7 @@ model Lead {
   venue_name      String?
   venue_has_sound Boolean    @default(false)
   venue_has_light Boolean    @default(false)
-  budget          Float?
+  budget          Decimal?
   status          LeadStatus @default(new_lead)
   assigned_to     String?
   observations    String?
@@ -128,6 +131,9 @@ model Lead {
   assignee User?     @relation("AssignedLeads", fields: [assigned_to], references: [id])
   messages Message[]
   event    Event?
+
+  @@index([band_id])
+  @@index([assigned_to])
 }
 
 model Event {
@@ -142,7 +148,7 @@ model Event {
   venue_address        String?
   venue_has_sound      Boolean     @default(false)
   venue_has_light      Boolean     @default(false)
-  value                Float
+  value                Decimal
   status               EventStatus @default(contracted)
   technical_visit_date DateTime?
   notes                String?
@@ -155,6 +161,8 @@ model Event {
   checklists      Checklist[]
   event_musicians EventMusician[]
   documents       Document[]
+
+  @@index([band_id])
 }
 
 model ContractTemplate {
@@ -167,6 +175,9 @@ model ContractTemplate {
 
   band      Band       @relation(fields: [band_id], references: [id], onDelete: Cascade)
   contracts Contract[]
+
+  @@unique([band_id, name])
+  @@index([band_id])
 }
 
 model Contract {
@@ -185,6 +196,10 @@ model Contract {
   event    Event            @relation(fields: [event_id], references: [id], onDelete: Cascade)
   template ContractTemplate @relation(fields: [template_id], references: [id])
   reviewer User?            @relation("ReviewedContracts", fields: [reviewed_by], references: [id])
+
+  @@index([event_id])
+  @@index([template_id])
+  @@index([reviewed_by])
 }
 
 model Checklist {
@@ -195,6 +210,8 @@ model Checklist {
 
   event Event          @relation(fields: [event_id], references: [id], onDelete: Cascade)
   items ChecklistItem[]
+
+  @@index([event_id])
 }
 
 model ChecklistItem {
@@ -205,6 +222,8 @@ model ChecklistItem {
   due_date     DateTime?
 
   checklist Checklist @relation(fields: [checklist_id], references: [id], onDelete: Cascade)
+
+  @@index([checklist_id])
 }
 
 model EventMusician {
@@ -234,6 +253,10 @@ model Document {
   band     Band   @relation(fields: [band_id], references: [id], onDelete: Cascade)
   event    Event? @relation(fields: [event_id], references: [id])
   uploader User   @relation(fields: [uploaded_by], references: [id])
+
+  @@index([band_id])
+  @@index([event_id])
+  @@index([uploaded_by])
 }
 
 model Message {
@@ -245,4 +268,6 @@ model Message {
   sent_at   DateTime         @default(now())
 
   lead Lead @relation(fields: [lead_id], references: [id], onDelete: Cascade)
+
+  @@index([lead_id])
 }
