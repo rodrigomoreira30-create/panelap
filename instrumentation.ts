@@ -10,5 +10,8 @@ export async function register() {
 
     const { registerAgendaEventCreatedListener } = await import('@/lib/agenda/on-event-created')
     registerAgendaEventCreatedListener()
+
+    const { registerPostsaleContractSignedListener } = await import('@/lib/postsale/triggers')
+    registerPostsaleContractSignedListener()
   }
 }
