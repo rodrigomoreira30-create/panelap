@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { runSdrAgent } from '@/lib/claude/agents/sdr-agent'
 import crypto from 'crypto'
 
 function verifySignature(body: string, signature: string): boolean {
@@ -36,12 +37,15 @@ export async function POST(request: Request) {
 
   const normalizedPhone = phone.replace(/\D/g, '')
 
+  let lead: { id: string } | null = null
+
   try {
-    const lead = await prisma.lead.findFirst({
+    const existingLead = await prisma.lead.findFirst({
       where: { phone: { contains: normalizedPhone } },
     })
 
-    if (lead) {
+    if (existingLead) {
+      lead = existingLead
       await prisma.message.create({
         data: {
           lead_id: lead.id,
@@ -62,6 +66,7 @@ export async function POST(request: Request) {
             status: 'new_lead',
           },
         })
+        lead = newLead
         await prisma.message.create({
           data: {
             lead_id: newLead.id,
@@ -75,6 +80,11 @@ export async function POST(request: Request) {
   } catch {
     // Log but don't expose internals — return 200 so provider doesn't retry
     console.error('WhatsApp webhook DB error')
+  }
+
+  if (lead) {
+    runSdrAgent({ lead_id: lead.id, new_message: content })
+      .catch(err => console.error('SDR Agent error:', err))
   }
 
   return NextResponse.json({ ok: true })
