@@ -1,15 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { registerLeadClosedContractListener } from '@/lib/contracts/on-lead-closed'
 
-vi.mock('@/lib/prisma', () => ({
-  prisma: {
-    event: { findUnique: vi.fn() },
-    contractTemplate: { findFirst: vi.fn() },
-    contract: {
-      findFirst: vi.fn(),
-      create: vi.fn(),
-    },
-  },
+vi.mock('@/lib/claude/agents/contracts-agent', () => ({
+  runContractsAgent: vi.fn(),
 }))
 
 vi.mock('@/lib/events/internal-bus', () => ({
@@ -35,71 +28,32 @@ describe('registerLeadClosedContractListener', () => {
     )
   })
 
-  it('creates contract when event and default template exist', async () => {
+  it('calls runContractsAgent with lead_id and band_id', async () => {
     const { eventBus } = await import('@/lib/events/internal-bus')
-    const { prisma } = await import('@/lib/prisma')
+    const { runContractsAgent } = await import('@/lib/claude/agents/contracts-agent')
 
-    vi.mocked(prisma.event.findUnique).mockResolvedValue({ id: 'event-1' } as any)
-    vi.mocked(prisma.contractTemplate.findFirst).mockResolvedValue({ id: 'template-1' } as any)
-    vi.mocked(prisma.contract.findFirst).mockResolvedValue(null)
-    vi.mocked(prisma.contract.create).mockResolvedValue({ id: 'contract-1' } as any)
+    vi.mocked(runContractsAgent).mockResolvedValue(undefined)
 
     registerLeadClosedContractListener()
 
     const handler = vi.mocked(eventBus.on).mock.calls[0]?.[1] as Function
     await handler({ lead_id: 'lead-1', band_id: 'band-1' })
 
-    expect(prisma.contract.create).toHaveBeenCalledWith({
-      data: {
-        event_id: 'event-1',
-        template_id: 'template-1',
-        status: 'draft',
-      },
+    expect(runContractsAgent).toHaveBeenCalledWith({
+      lead_id: 'lead-1',
+      band_id: 'band-1',
     })
   })
 
-  it('does not create contract when event not found', async () => {
+  it('does not throw when runContractsAgent rejects', async () => {
     const { eventBus } = await import('@/lib/events/internal-bus')
-    const { prisma } = await import('@/lib/prisma')
+    const { runContractsAgent } = await import('@/lib/claude/agents/contracts-agent')
 
-    vi.mocked(prisma.event.findUnique).mockResolvedValue(null)
+    vi.mocked(runContractsAgent).mockRejectedValue(new Error('agent failure'))
 
     registerLeadClosedContractListener()
 
     const handler = vi.mocked(eventBus.on).mock.calls[0]?.[1] as Function
-    await handler({ lead_id: 'lead-1', band_id: 'band-1' })
-
-    expect(prisma.contract.create).not.toHaveBeenCalled()
-  })
-
-  it('does not create contract when no default template', async () => {
-    const { eventBus } = await import('@/lib/events/internal-bus')
-    const { prisma } = await import('@/lib/prisma')
-
-    vi.mocked(prisma.event.findUnique).mockResolvedValue({ id: 'event-1' } as any)
-    vi.mocked(prisma.contractTemplate.findFirst).mockResolvedValue(null)
-
-    registerLeadClosedContractListener()
-
-    const handler = vi.mocked(eventBus.on).mock.calls[0]?.[1] as Function
-    await handler({ lead_id: 'lead-1', band_id: 'band-1' })
-
-    expect(prisma.contract.create).not.toHaveBeenCalled()
-  })
-
-  it('does not create duplicate contract when one already exists', async () => {
-    const { eventBus } = await import('@/lib/events/internal-bus')
-    const { prisma } = await import('@/lib/prisma')
-
-    vi.mocked(prisma.event.findUnique).mockResolvedValue({ id: 'event-1' } as any)
-    vi.mocked(prisma.contractTemplate.findFirst).mockResolvedValue({ id: 'template-1' } as any)
-    vi.mocked(prisma.contract.findFirst).mockResolvedValue({ id: 'existing-contract' } as any)
-
-    registerLeadClosedContractListener()
-
-    const handler = vi.mocked(eventBus.on).mock.calls[0]?.[1] as Function
-    await handler({ lead_id: 'lead-1', band_id: 'band-1' })
-
-    expect(prisma.contract.create).not.toHaveBeenCalled()
+    await expect(handler({ lead_id: 'lead-1', band_id: 'band-1' })).resolves.toBeUndefined()
   })
 })
