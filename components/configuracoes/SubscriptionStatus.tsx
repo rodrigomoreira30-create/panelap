@@ -43,12 +43,15 @@ export function SubscriptionStatus({ hasAsaasId }: SubscriptionStatusProps) {
 
   async function openPortal() {
     setLoadingPortal(true)
-    const res = await fetch('/api/billing/portal')
-    if (res.ok) {
-      const { data } = await res.json()
-      window.open(data.url, '_blank', 'noopener,noreferrer')
+    try {
+      const res = await fetch('/api/billing/portal')
+      if (res.ok) {
+        const { data } = await res.json()
+        window.open(data.url, '_blank', 'noopener,noreferrer')
+      }
+    } finally {
+      setLoadingPortal(false)
     }
-    setLoadingPortal(false)
   }
 
   if (!sub) return <div className="h-20 bg-gray-100 animate-pulse rounded-lg" />

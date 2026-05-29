@@ -1,20 +1,20 @@
 import { NextResponse } from 'next/server'
 import { triggerPreEventMessages, triggerPostEventMessages } from '@/lib/postsale/triggers'
 
-export async function POST(request: Request) {
+export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const errors: string[] = []
 
   await triggerPreEventMessages().catch(err => {
-    errors.push(`pre_event: ${(err as Error).message}`)
+    errors.push(`pre_event: ${err instanceof Error ? err.message : String(err)}`)
   })
 
   await triggerPostEventMessages().catch(err => {
-    errors.push(`post_event: ${(err as Error).message}`)
+    errors.push(`post_event: ${err instanceof Error ? err.message : String(err)}`)
   })
 
   return NextResponse.json({

@@ -28,6 +28,7 @@ export default async function ConfiguracoesPage({
 
   const members = await prisma.user.findMany({
     where: { band_id: dbUser.band_id },
+    select: { id: true, name: true, email: true, role: true },
     orderBy: [{ role: 'asc' }, { name: 'asc' }],
   })
 

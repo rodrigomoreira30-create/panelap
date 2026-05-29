@@ -42,7 +42,7 @@ export async function runPostsaleAgent({ event_id, trigger }: PostsaleAgentInput
   const message = textBlock.text.trim()
   if (!message) return
 
-  const phone = event.lead.phone
+  const phone = event.lead?.phone
   if (!phone) return
 
   await sendWhatsAppMessage({ to: phone, message })
