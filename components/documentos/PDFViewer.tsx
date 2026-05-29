@@ -12,23 +12,30 @@ interface PDFViewerProps {
 export function PDFViewer({ documentId, fileName }: PDFViewerProps) {
   const [url, setUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   async function loadUrl() {
     setLoading(true)
+    setError('')
     const res = await fetch(`/api/documents/${documentId}/download`)
     if (res.ok) {
       const { data } = await res.json()
       setUrl(data.url)
+    } else {
+      setError('Falha ao carregar arquivo')
     }
     setLoading(false)
   }
 
   if (!url) {
     return (
-      <Button variant="ghost" size="sm" onClick={loadUrl} disabled={loading}>
-        <ExternalLink size={14} className="mr-1" />
-        {loading ? 'Carregando...' : 'Visualizar'}
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button variant="ghost" size="sm" onClick={loadUrl} disabled={loading}>
+          <ExternalLink size={14} className="mr-1" />
+          {loading ? 'Carregando...' : 'Visualizar'}
+        </Button>
+        {error && <span className="text-red-500 text-xs">{error}</span>}
+      </div>
     )
   }
 

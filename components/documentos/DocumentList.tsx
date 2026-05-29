@@ -46,8 +46,8 @@ export function DocumentList({ documents, canDelete }: DocumentListProps) {
   async function handleDelete(id: string) {
     if (!confirm('Remover este documento?')) return
     setDeleting(id)
-    await fetch(`/api/documents/${id}`, { method: 'DELETE' })
-    router.refresh()
+    const res = await fetch(`/api/documents/${id}`, { method: 'DELETE' })
+    if (res.ok) router.refresh()
     setDeleting(null)
   }
 
