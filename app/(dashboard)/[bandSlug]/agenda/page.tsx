@@ -42,46 +42,47 @@ export default async function AgendaPage({
   const monthStart = startOfMonth(now)
   const monthEnd = endOfMonth(now)
 
-  const events = await prisma.event.findMany({
-    where: {
-      band_id: dbUser.band_id,
-      event_date: { gte: monthStart, lte: monthEnd },
-      status: { in: ['contracted', 'active'] as ('contracted' | 'active')[] },
-    },
-    include: {
-      event_musicians: {
-        include: { user: { select: { id: true, name: true } } },
+  const [events, pendingMusicians] = await Promise.all([
+    prisma.event.findMany({
+      where: {
+        band_id: dbUser.band_id,
+        event_date: { gte: monthStart, lte: monthEnd },
+        status: { in: ['contracted', 'active'] as ('contracted' | 'active')[] },
       },
-    },
-    orderBy: { event_date: 'asc' },
-  })
+      include: {
+        event_musicians: {
+          include: { user: { select: { id: true, name: true } } },
+        },
+      },
+      orderBy: { event_date: 'asc' },
+    }),
+    prisma.eventMusician.findMany({
+      where: {
+        event: {
+          band_id: dbUser.band_id,
+          status: { in: ['contracted', 'active'] as ('contracted' | 'active')[] },
+        },
+        status: 'pending',
+      },
+      include: {
+        user: { select: { name: true } },
+        event: { select: { client_name: true, event_type: true, event_date: true } },
+      },
+      orderBy: { event: { event_date: 'asc' } },
+    }),
+  ])
 
   const calendarEvents: CalendarEvent[] = events.map(e => ({
     id: e.id,
-    title: `${e.client_name} — ${e.venue_name}`,
+    title: `${e.client_name} — ${e.venue_name ?? ''}`,
     start: e.event_date,
     end: e.event_date,
     resource: {
       status: e.status,
       type: e.event_type,
-      musicians: e.event_musicians.map(em => em.user.name),
+      musicians: e.event_musicians.map(em => em.user.name ?? ''),
     },
   }))
-
-  const pendingMusicians = await prisma.eventMusician.findMany({
-    where: {
-      event: {
-        band_id: dbUser.band_id,
-        status: { in: ['contracted', 'active'] as ('contracted' | 'active')[] },
-      },
-      status: 'pending',
-    },
-    include: {
-      user: { select: { name: true } },
-      event: { select: { client_name: true, event_type: true, event_date: true } },
-    },
-    orderBy: { event: { event_date: 'asc' } },
-  })
 
   return (
     <div className="p-6 space-y-6">
