@@ -1,22 +1,12 @@
 import { ChecklistItemRow } from './ChecklistItemRow'
-
-type ChecklistItem = {
-  id: string
-  description: string
-  done: boolean
-}
-
-type ChecklistWithItems = {
-  id: string
-  title: string
-  items: ChecklistItem[]
-}
+import type { Checklist } from './EventDetailClient'
 
 type Props = {
-  checklists: ChecklistWithItems[]
+  checklists: Checklist[]
+  eventoId: string
 }
 
-export function ChecklistPanel({ checklists }: Props) {
+export function ChecklistPanel({ checklists, eventoId }: Props) {
   if (checklists.length === 0) {
     return <p className="text-gray-400 text-sm">Nenhum checklist criado.</p>
   }
@@ -36,7 +26,12 @@ export function ChecklistPanel({ checklists }: Props) {
             </div>
             <div className="p-1">
               {checklist.items.map(item => (
-                <ChecklistItemRow key={item.id} checklistId={checklist.id} item={item} />
+                <ChecklistItemRow
+                  key={item.id}
+                  checklistId={checklist.id}
+                  item={item}
+                  eventoId={eventoId}
+                />
               ))}
             </div>
           </div>
