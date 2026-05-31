@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useToast } from '@/hooks/use-toast'
 import {
   DndContext, DragEndEvent, DragOverlay, PointerSensor, useSensor, useSensors,
 } from '@dnd-kit/core'
@@ -58,6 +59,7 @@ async function fetchLeads(): Promise<KanbanLead[]> {
 export function KanbanBoard({ bandSlug, pipelineStages }: KanbanBoardProps) {
   const router = useRouter()
   const queryClient = useQueryClient()
+  const { toast } = useToast()
   const [activeId, setActiveId] = useState<string | null>(null)
 
   const stages = pipelineStages ?? DEFAULT_STAGES
@@ -90,6 +92,7 @@ export function KanbanBoard({ bandSlug, pipelineStages }: KanbanBoardProps) {
     },
     onError: (_err, _vars, context) => {
       queryClient.setQueryData(queryKey, context?.previous)
+      toast({ title: 'Erro ao mover lead', description: 'Tente novamente.', variant: 'destructive' })
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey })
@@ -98,7 +101,8 @@ export function KanbanBoard({ bandSlug, pipelineStages }: KanbanBoardProps) {
 
   const deleteMutation = useMutation({
     mutationFn: async (leadId: string) => {
-      await fetch(`/api/leads/${leadId}`, { method: 'DELETE' })
+      const res = await fetch(`/api/leads/${leadId}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Falha ao apagar lead')
     },
     onMutate: async (leadId) => {
       await queryClient.cancelQueries({ queryKey })
@@ -110,6 +114,7 @@ export function KanbanBoard({ bandSlug, pipelineStages }: KanbanBoardProps) {
     },
     onError: (_err, _vars, context) => {
       queryClient.setQueryData(queryKey, context?.previous)
+      toast({ title: 'Erro ao apagar lead', description: 'Tente novamente.', variant: 'destructive' })
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey })
