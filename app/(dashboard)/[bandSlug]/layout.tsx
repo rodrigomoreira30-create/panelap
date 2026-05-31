@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/prisma'
 import { BandProvider } from '@/components/shared/BandProvider'
 import { Sidebar } from '@/components/shared/Sidebar'
+import { QueryProvider } from '@/components/shared/QueryProvider'
 import type { SessionUser } from '@/types'
 
 export default async function DashboardLayout({
@@ -35,10 +36,12 @@ export default async function DashboardLayout({
 
   return (
     <BandProvider band={dbUser.band} user={sessionUser}>
-      <div className="flex h-screen bg-gray-50">
-        <Sidebar />
-        <main className="flex-1 overflow-auto p-6">{children}</main>
-      </div>
+      <QueryProvider>
+        <div className="flex h-screen bg-gray-50">
+          <Sidebar />
+          <main className="flex-1 overflow-auto p-6">{children}</main>
+        </div>
+      </QueryProvider>
     </BandProvider>
   )
 }
