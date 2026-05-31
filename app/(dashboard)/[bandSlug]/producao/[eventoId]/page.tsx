@@ -58,17 +58,20 @@ export default async function EventDetailPage({
   const queryClient = new QueryClient()
   queryClient.setQueryData(['event', eventoId], {
     checklists: event.checklists.map(c => ({
-      ...c,
-      created_at: c.created_at.toISOString(),
-      updated_at: c.updated_at.toISOString(),
+      id: c.id,
+      title: c.title,
       items: c.items.map(i => ({
-        ...i,
-        created_at: i.created_at.toISOString(),
+        id: i.id,
+        description: i.description,
+        done: i.done,
       })),
     })),
     event_musicians: event.event_musicians.map(m => ({
-      ...m,
-      created_at: m.created_at.toISOString(),
+      id: m.id,
+      user_id: m.user_id,
+      instrument: m.instrument,
+      status: m.status,
+      user: m.user,
     })),
   })
 
