@@ -1,72 +1,68 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { X } from 'lucide-react'
+import type { EventMusician } from './EventDetailClient'
 
-type MusicianStatus = 'pending' | 'confirmed' | 'declined'
-
-const statusConfig: Record<MusicianStatus, { label: string; className: string }> = {
-  pending:   { label: 'Pendente',    className: 'bg-yellow-100 text-yellow-700' },
-  confirmed: { label: 'Confirmado',  className: 'bg-green-100 text-green-700' },
-  declined:  { label: 'Recusou',     className: 'bg-red-100 text-red-700' },
+const statusConfig: Record<string, { label: string; className: string }> = {
+  pending:   { label: 'Pendente',   className: 'bg-yellow-100 text-yellow-700' },
+  confirmed: { label: 'Confirmado', className: 'bg-green-100 text-green-700' },
+  declined:  { label: 'Recusou',    className: 'bg-red-100 text-red-700' },
 }
 
-type EventMusicianWithUser = {
-  id: string
-  user_id: string
-  instrument: string | null
-  status: MusicianStatus
-  user: {
-    id: string
-    name: string
-    avatar_url: string | null
-  }
-}
-
-type BandMember = {
-  id: string
-  name: string
-}
+type BandMember = { id: string; name: string }
 
 type Props = {
   eventId: string
-  musicians: EventMusicianWithUser[]
+  musicians: EventMusician[]
   bandMembers: BandMember[]
 }
 
-export function TeamPanel({ eventId, musicians: initialMusicians, bandMembers }: Props) {
-  const router = useRouter()
-  const [musicians, setMusicians] = useState(initialMusicians)
+export function TeamPanel({ eventId, musicians, bandMembers }: Props) {
+  const queryClient = useQueryClient()
+  const queryKey = ['event', eventId]
   const [selectedUserId, setSelectedUserId] = useState('')
-  const [adding, setAdding] = useState(false)
 
   const alreadyAdded = new Set(musicians.map(m => m.user_id))
   const available = bandMembers.filter(m => !alreadyAdded.has(m.id))
 
-  async function addMusician() {
-    if (!selectedUserId) return
-    setAdding(true)
-    try {
+  const addMutation = useMutation({
+    mutationFn: async (userId: string) => {
       const res = await fetch('/api/event-musicians', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ event_id: eventId, user_id: selectedUserId }),
+        body: JSON.stringify({ event_id: eventId, user_id: userId }),
       })
-      if (res.ok) {
-        setSelectedUserId('')
-        router.refresh()
-      }
-    } finally {
-      setAdding(false)
-    }
-  }
+      if (!res.ok) throw new Error('Falha ao adicionar músico')
+    },
+    onSuccess: () => {
+      setSelectedUserId('')
+      queryClient.invalidateQueries({ queryKey })
+    },
+  })
 
-  async function removeMusician(id: string) {
-    if (!window.confirm('Remover músico do evento?')) return
-    await fetch(`/api/event-musicians?id=${id}`, { method: 'DELETE' })
-    setMusicians(prev => prev.filter(m => m.id !== id))
-  }
+  const removeMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/event-musicians?id=${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Falha ao remover músico')
+    },
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey })
+      const previous = queryClient.getQueryData(queryKey)
+      queryClient.setQueryData(queryKey, (old: any) => ({
+        ...old,
+        event_musicians: (old?.event_musicians ?? []).filter((m: any) => m.id !== id),
+      }))
+      return { previous }
+    },
+    onError: (_err, _vars, context) => {
+      queryClient.setQueryData(queryKey, context?.previous)
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey })
+    },
+  })
 
   return (
     <div className="space-y-4">
@@ -89,8 +85,11 @@ export function TeamPanel({ eventId, musicians: initialMusicians, bandMembers }:
                 {cfg.label}
               </span>
               <button
-                onClick={() => removeMusician(em.id)}
-                className="text-gray-400 hover:text-red-500 transition-colors"
+                onClick={() => {
+                  if (window.confirm('Remover músico do evento?')) removeMutation.mutate(em.id)
+                }}
+                disabled={removeMutation.isPending}
+                className="text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
                 aria-label="Remover músico"
               >
                 <X size={16} />
@@ -113,11 +112,11 @@ export function TeamPanel({ eventId, musicians: initialMusicians, bandMembers }:
             ))}
           </select>
           <button
-            onClick={addMusician}
-            disabled={!selectedUserId || adding}
+            onClick={() => { if (selectedUserId) addMutation.mutate(selectedUserId) }}
+            disabled={!selectedUserId || addMutation.isPending}
             className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
           >
-            {adding ? 'Adicionando...' : 'Adicionar'}
+            {addMutation.isPending ? 'Adicionando...' : 'Adicionar'}
           </button>
         </div>
       )}
