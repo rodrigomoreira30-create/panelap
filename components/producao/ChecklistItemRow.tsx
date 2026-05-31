@@ -2,7 +2,7 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
-import type { ChecklistItem } from './EventDetailClient'
+import type { ChecklistItem, EventData } from './EventDetailClient'
 
 type Props = {
   checklistId: string
@@ -26,14 +26,17 @@ export function ChecklistItemRow({ checklistId, item, eventoId }: Props) {
     onMutate: async (newDone) => {
       await queryClient.cancelQueries({ queryKey })
       const previous = queryClient.getQueryData(queryKey)
-      queryClient.setQueryData(queryKey, (old: any) => ({
-        ...old,
-        checklists: (old?.checklists ?? []).map((c: any) =>
-          c.id === checklistId
-            ? { ...c, items: c.items.map((i: any) => i.id === item.id ? { ...i, done: newDone } : i) }
-            : c
-        ),
-      }))
+      queryClient.setQueryData<EventData>(queryKey, (old) => {
+        if (!old) return old
+        return {
+          ...old,
+          checklists: old.checklists.map((c) =>
+            c.id === checklistId
+              ? { ...c, items: c.items.map((i) => i.id === item.id ? { ...i, done: newDone } : i) }
+              : c
+          ),
+        }
+      })
       return { previous }
     },
     onError: (_err, _vars, context) => {

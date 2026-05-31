@@ -91,7 +91,7 @@ export function TeamPanel({ eventId, musicians, bandMembers }: Props) {
                 onClick={() => {
                   if (window.confirm('Remover músico do evento?')) removeMutation.mutate(em.id)
                 }}
-                disabled={removeMutation.isPending && removeMutation.variables === em.id}
+                disabled={removeMutation.isPending}
                 className="text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
                 aria-label="Remover músico"
               >
