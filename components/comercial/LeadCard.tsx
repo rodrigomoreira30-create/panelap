@@ -5,9 +5,10 @@ import { CSS } from '@dnd-kit/utilities'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import type { Lead, User } from '@/types'
+import type { KanbanLead } from './KanbanBoard'
 
 const eventTypeLabels: Record<string, string> = {
   wedding: 'Casamento', party: 'Festa', show: 'Show',
@@ -15,11 +16,12 @@ const eventTypeLabels: Record<string, string> = {
 }
 
 interface LeadCardProps {
-  lead: Lead & { assignee: Pick<User, 'id' | 'name' | 'avatar_url'> | null }
+  lead: KanbanLead
   onClick: () => void
+  onDelete?: (id: string) => void
 }
 
-export function LeadCard({ lead, onClick }: LeadCardProps) {
+export function LeadCard({ lead, onClick, onDelete }: LeadCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: lead.id,
   })
@@ -37,15 +39,28 @@ export function LeadCard({ lead, onClick }: LeadCardProps) {
         onClick={onClick}
       >
         <CardContent className="p-3 space-y-2">
-          <div className="flex items-start justify-between">
+          <div className="flex items-start justify-between gap-1">
             <p className="font-medium text-sm leading-tight">{lead.client_name}</p>
-            <Badge variant="secondary" className="text-xs shrink-0 ml-1">
-              {eventTypeLabels[lead.event_type] ?? lead.event_type}
-            </Badge>
+            <div className="flex items-center gap-1 shrink-0">
+              <Badge variant="secondary" className="text-xs">
+                {eventTypeLabels[lead.event_type] ?? lead.event_type}
+              </Badge>
+              {onDelete && (
+                <button
+                  onClick={e => {
+                    e.stopPropagation()
+                    if (confirm(`Apagar lead de ${lead.client_name}?`)) onDelete(lead.id)
+                  }}
+                  className="text-gray-300 hover:text-red-500 transition-colors p-0.5"
+                >
+                  <Trash2 size={13} />
+                </button>
+              )}
+            </div>
           </div>
           {lead.event_date && (
             <p className="text-xs text-gray-500">
-              {format(new Date(lead.event_date as Date), "dd 'de' MMM yyyy", { locale: ptBR })}
+              {format(new Date(lead.event_date), "dd 'de' MMM yyyy", { locale: ptBR })}
             </p>
           )}
           {lead.city && (
@@ -53,7 +68,7 @@ export function LeadCard({ lead, onClick }: LeadCardProps) {
           )}
           {lead.budget != null && (
             <p className="text-xs font-medium text-green-600">
-              R$ {parseFloat(lead.budget.toString()).toLocaleString('pt-BR')}
+              R$ {lead.budget.toLocaleString('pt-BR')}
             </p>
           )}
           {lead.assignee && (
