@@ -24,7 +24,7 @@ export type EventMusician = {
   user: { id: string; name: string; avatar_url: string | null }
 }
 
-type EventData = {
+export type EventData = {
   checklists: Checklist[]
   event_musicians: EventMusician[]
 }

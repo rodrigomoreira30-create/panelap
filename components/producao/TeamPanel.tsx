@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { X } from 'lucide-react'
-import type { EventMusician } from './EventDetailClient'
+import type { EventData, EventMusician } from './EventDetailClient'
 
 const statusConfig: Record<string, { label: string; className: string }> = {
   pending:   { label: 'Pendente',   className: 'bg-yellow-100 text-yellow-700' },
@@ -40,6 +40,9 @@ export function TeamPanel({ eventId, musicians, bandMembers }: Props) {
       setSelectedUserId('')
       queryClient.invalidateQueries({ queryKey })
     },
+    onError: () => {
+      console.error('Falha ao adicionar músico ao evento')
+    },
   })
 
   const removeMutation = useMutation({
@@ -50,10 +53,10 @@ export function TeamPanel({ eventId, musicians, bandMembers }: Props) {
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey })
       const previous = queryClient.getQueryData(queryKey)
-      queryClient.setQueryData(queryKey, (old: any) => ({
-        ...old,
-        event_musicians: (old?.event_musicians ?? []).filter((m: any) => m.id !== id),
-      }))
+      queryClient.setQueryData<EventData>(queryKey, (old) => {
+        if (!old) return old
+        return { ...old, event_musicians: old.event_musicians.filter((m) => m.id !== id) }
+      })
       return { previous }
     },
     onError: (_err, _vars, context) => {
@@ -88,7 +91,7 @@ export function TeamPanel({ eventId, musicians, bandMembers }: Props) {
                 onClick={() => {
                   if (window.confirm('Remover músico do evento?')) removeMutation.mutate(em.id)
                 }}
-                disabled={removeMutation.isPending}
+                disabled={removeMutation.isPending && removeMutation.variables === em.id}
                 className="text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
                 aria-label="Remover músico"
               >
