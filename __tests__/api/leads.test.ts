@@ -61,4 +61,9 @@ describe('leadUpdateSchema', () => {
     const result = leadUpdateSchema.safeParse({ source: '' })
     expect(result.success).toBe(false)
   })
+
+  it('permite source como null (lead sem fonte)', () => {
+    const result = leadUpdateSchema.safeParse({ source: null })
+    expect(result.success).toBe(true)
+  })
 })

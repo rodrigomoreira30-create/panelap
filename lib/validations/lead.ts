@@ -22,7 +22,7 @@ export const leadUpdateSchema = z.object({
   client_name:     z.string().min(2).optional(),
   phone:           z.string().min(10).optional(),
   event_type:      z.enum(eventTypes).optional(),
-  source:          z.string().min(1).optional(),
+  source:          z.string().min(1).optional().nullable(),
   event_date:      z.string().min(1).optional().nullable(),
   city:            z.string().optional(),
   venue_name:      z.string().optional(),
