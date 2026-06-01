@@ -17,15 +17,6 @@ enum UserRole {
   musician
 }
 
-enum LeadStatus {
-  new_lead
-  attending
-  proposal_sent
-  negotiation
-  closed
-  lost
-}
-
 enum EventType {
   wedding
   party
@@ -73,13 +64,15 @@ enum SaasPlan {
 }
 
 model Band {
-  id         String   @id @default(cuid())
-  name       String
-  slug       String   @unique
-  plan       SaasPlan @default(starter)
-  logo_url   String?
-  asaas_id   String?
-  created_at DateTime @default(now())
+  id               String   @id @default(cuid())
+  name             String
+  slug             String   @unique
+  plan             SaasPlan @default(starter)
+  logo_url         String?
+  asaas_id         String?
+  pipeline_stages  Json?
+  lead_sources     Json?
+  created_at       DateTime @default(now())
 
   users              User[]
   leads              Lead[]
@@ -121,16 +114,19 @@ model Lead {
   venue_has_sound Boolean    @default(false)
   venue_has_light Boolean    @default(false)
   budget          Decimal?
-  status          LeadStatus @default(new_lead)
+  status          String     @default("new_lead")
+  tags            Json       @default("[]")
+  source          String?
   assigned_to     String?
   observations    String?
   created_at      DateTime   @default(now())
   updated_at      DateTime   @updatedAt
 
-  band     Band      @relation(fields: [band_id], references: [id], onDelete: Cascade)
-  assignee User?     @relation("AssignedLeads", fields: [assigned_to], references: [id])
-  messages Message[]
-  event    Event?
+  band      Band       @relation(fields: [band_id], references: [id], onDelete: Cascade)
+  assignee  User?      @relation("AssignedLeads", fields: [assigned_to], references: [id])
+  messages  Message[]
+  documents Document[]
+  event     Event?
 
   @@index([band_id])
   @@index([assigned_to])
@@ -243,6 +239,7 @@ model EventMusician {
 model Document {
   id          String       @id @default(cuid())
   band_id     String
+  lead_id     String?
   event_id    String?
   type        DocumentType
   file_url    String
@@ -251,10 +248,12 @@ model Document {
   created_at  DateTime     @default(now())
 
   band     Band   @relation(fields: [band_id], references: [id], onDelete: Cascade)
+  lead     Lead?  @relation(fields: [lead_id], references: [id], onDelete: Cascade)
   event    Event? @relation(fields: [event_id], references: [id])
   uploader User   @relation(fields: [uploaded_by], references: [id])
 
   @@index([band_id])
+  @@index([lead_id])
   @@index([event_id])
   @@index([uploaded_by])
 }
