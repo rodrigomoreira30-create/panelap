@@ -7,17 +7,20 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 
+type Source = { key: string; label: string }
+
 interface LeadFormProps {
+  sources: Source[]
   onSuccess: () => void
   onCancel: () => void
 }
 
-export function LeadForm({ onSuccess, onCancel }: LeadFormProps) {
+export function LeadForm({ sources, onSuccess, onCancel }: LeadFormProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [form, setForm] = useState({
-    client_name: '', phone: '', event_type: '',
-    city: '', venue_name: '', budget: '',
+    client_name: '', phone: '', event_type: '', source: '',
+    event_date: '', city: '', venue_name: '', budget: '',
     venue_has_sound: false, venue_has_light: false,
     observations: '',
   })
@@ -38,6 +41,7 @@ export function LeadForm({ onSuccess, onCancel }: LeadFormProps) {
         body: JSON.stringify({
           ...form,
           budget: form.budget ? parseFloat(form.budget) : undefined,
+          event_date: form.event_date || undefined,
         }),
       })
 
@@ -48,6 +52,7 @@ export function LeadForm({ onSuccess, onCancel }: LeadFormProps) {
         return
       }
 
+      setLoading(false)
       onSuccess()
     } catch {
       setError('Erro de conexão. Tente novamente.')
@@ -78,6 +83,21 @@ export function LeadForm({ onSuccess, onCancel }: LeadFormProps) {
               <SelectItem value="other">Outro</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+        <div>
+          <Label>Fonte *</Label>
+          <Select onValueChange={v => set('source', v)} required>
+            <SelectTrigger><SelectValue placeholder="Selecione a fonte" /></SelectTrigger>
+            <SelectContent>
+              {sources.map(s => (
+                <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label>Data do evento</Label>
+          <Input type="date" value={form.event_date} onChange={e => set('event_date', e.target.value)} />
         </div>
         <div>
           <Label>Orçamento estimado (R$)</Label>
