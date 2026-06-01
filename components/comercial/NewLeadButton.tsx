@@ -7,7 +7,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus } from 'lucide-react'
 import { LeadForm } from './LeadForm'
 
-export function NewLeadButton() {
+type Source = { key: string; label: string }
+
+interface NewLeadButtonProps {
+  sources: Source[]
+}
+
+export function NewLeadButton({ sources }: NewLeadButtonProps) {
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
 
@@ -23,7 +29,7 @@ export function NewLeadButton() {
       </DialogTrigger>
       <DialogContent className="max-w-2xl">
         <DialogHeader><DialogTitle>Criar novo lead</DialogTitle></DialogHeader>
-        <LeadForm onSuccess={handleSuccess} onCancel={() => setOpen(false)} />
+        <LeadForm sources={sources} onSuccess={handleSuccess} onCancel={() => setOpen(false)} />
       </DialogContent>
     </Dialog>
   )
