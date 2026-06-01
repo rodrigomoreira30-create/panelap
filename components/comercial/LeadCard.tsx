@@ -10,6 +10,8 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import type { KanbanLead } from './KanbanBoard'
 
+type Source = { key: string; label: string }
+
 const eventTypeLabels: Record<string, string> = {
   wedding: 'Casamento', party: 'Festa', show: 'Show',
   corporate: 'Corporativo', other: 'Outro',
@@ -19,9 +21,10 @@ interface LeadCardProps {
   lead: KanbanLead
   onClick: () => void
   onDelete?: (id: string) => void
+  sources?: Source[]
 }
 
-export function LeadCard({ lead, onClick, onDelete }: LeadCardProps) {
+export function LeadCard({ lead, onClick, onDelete, sources }: LeadCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: lead.id,
   })
@@ -60,7 +63,10 @@ export function LeadCard({ lead, onClick, onDelete }: LeadCardProps) {
           </div>
           {lead.event_date && (
             <p className="text-xs text-gray-500">
-              {format(new Date(lead.event_date), "dd 'de' MMM yyyy", { locale: ptBR })}
+              {(() => {
+                const [y, m, d] = lead.event_date!.slice(0, 10).split('-').map(Number)
+                return format(new Date(y, m - 1, d), "dd 'de' MMM yyyy", { locale: ptBR })
+              })()}
             </p>
           )}
           {lead.city && (
@@ -71,6 +77,24 @@ export function LeadCard({ lead, onClick, onDelete }: LeadCardProps) {
               R$ {lead.budget.toLocaleString('pt-BR')}
             </p>
           )}
+          {lead.tags && lead.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {lead.tags.slice(0, 3).map(tag => (
+                <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 leading-none">
+                  {tag}
+                </span>
+              ))}
+              {lead.tags.length > 3 && (
+                <span className="text-[10px] text-gray-400">+{lead.tags.length - 3}</span>
+              )}
+            </div>
+          )}
+          {lead.source && sources && (() => {
+            const src = sources.find(s => s.key === lead.source)
+            return src ? (
+              <p className="text-xs text-gray-400">{src.label}</p>
+            ) : null
+          })()}
           {lead.assignee && (
             <div className="flex items-center gap-1 mt-1">
               <Avatar className="h-5 w-5">
