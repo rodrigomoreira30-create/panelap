@@ -6,6 +6,8 @@ import { LeadCard } from './LeadCard'
 import { Badge } from '@/components/ui/badge'
 import type { KanbanLead } from './KanbanBoard'
 
+type Source = { key: string; label: string }
+
 const statusColors: Record<string, string> = {
   new_lead:      'bg-gray-100',
   attending:     'bg-blue-50',
@@ -19,11 +21,12 @@ interface KanbanColumnProps {
   status: string
   label: string
   leads: KanbanLead[]
+  sources: Source[]
   onLeadClick: (lead: KanbanLead) => void
   onLeadDelete: (id: string) => void
 }
 
-export function KanbanColumn({ status, label, leads, onLeadClick, onLeadDelete }: KanbanColumnProps) {
+export function KanbanColumn({ status, label, leads, sources, onLeadClick, onLeadDelete }: KanbanColumnProps) {
   const { setNodeRef } = useDroppable({ id: status })
 
   return (
@@ -35,7 +38,13 @@ export function KanbanColumn({ status, label, leads, onLeadClick, onLeadDelete }
       <SortableContext items={leads.map(l => l.id)} strategy={verticalListSortingStrategy}>
         <div ref={setNodeRef} className="flex flex-col gap-2 flex-1">
           {leads.map(lead => (
-            <LeadCard key={lead.id} lead={lead} onClick={() => onLeadClick(lead)} onDelete={onLeadDelete} />
+            <LeadCard
+              key={lead.id}
+              lead={lead}
+              sources={sources}
+              onClick={() => onLeadClick(lead)}
+              onDelete={onLeadDelete}
+            />
           ))}
         </div>
       </SortableContext>
