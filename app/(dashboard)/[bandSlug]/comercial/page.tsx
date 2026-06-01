@@ -5,6 +5,12 @@ import { redirect } from 'next/navigation'
 import { KanbanBoard } from '@/components/comercial/KanbanBoard'
 import { NewLeadButton } from '@/components/comercial/NewLeadButton'
 
+const DEFAULT_SOURCES = [
+  { key: 'referral',     label: 'Indicação' },
+  { key: 'social_media', label: 'Redes Sociais' },
+  { key: 'paid_traffic', label: 'Tráfego Pago' },
+]
+
 export default async function ComercialPage({
   params,
 }: {
@@ -40,10 +46,11 @@ export default async function ComercialPage({
 
   const band = await prisma.band.findUnique({
     where: { id: dbUser.band_id },
-    select: { pipeline_stages: true },
+    select: { pipeline_stages: true, lead_sources: true },
   })
 
   const pipelineStages = (band?.pipeline_stages as { key: string; label: string }[] | null) ?? null
+  const leadSources = (band?.lead_sources as { key: string; label: string }[] | null) ?? DEFAULT_SOURCES
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
@@ -53,11 +60,12 @@ export default async function ComercialPage({
             <h1 className="text-2xl font-bold">Comercial</h1>
             <p className="text-gray-500 text-sm">Pipeline de leads e oportunidades</p>
           </div>
-          <NewLeadButton />
+          <NewLeadButton sources={leadSources} />
         </div>
         <KanbanBoard
           bandSlug={bandSlug}
           pipelineStages={pipelineStages}
+          leadSources={leadSources}
         />
       </div>
     </HydrationBoundary>
