@@ -1,20 +1,31 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { leadCreateSchema, leadUpdateSchema } from '@/lib/validations/lead'
 
 describe('leadCreateSchema', () => {
-  it('valida payload mínimo correto', () => {
+  it('valida payload mínimo correto com source', () => {
+    const result = leadCreateSchema.safeParse({
+      client_name: 'João Silva',
+      phone: '11999999999',
+      event_type: 'wedding',
+      source: 'referral',
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('rejeita payload sem source', () => {
     const result = leadCreateSchema.safeParse({
       client_name: 'João Silva',
       phone: '11999999999',
       event_type: 'wedding',
     })
-    expect(result.success).toBe(true)
+    expect(result.success).toBe(false)
   })
 
   it('rejeita payload sem client_name', () => {
     const result = leadCreateSchema.safeParse({
       phone: '11999999999',
       event_type: 'wedding',
+      source: 'referral',
     })
     expect(result.success).toBe(false)
   })
@@ -24,6 +35,7 @@ describe('leadCreateSchema', () => {
       client_name: 'João',
       phone: '11999999999',
       event_type: 'invalid_type',
+      source: 'referral',
     })
     expect(result.success).toBe(false)
   })
@@ -37,6 +49,16 @@ describe('leadUpdateSchema', () => {
 
   it('rejeita status inválido', () => {
     const result = leadUpdateSchema.safeParse({ status: 'unknown' })
+    expect(result.success).toBe(false)
+  })
+
+  it('permite atualizar source', () => {
+    const result = leadUpdateSchema.safeParse({ source: 'social_media' })
+    expect(result.success).toBe(true)
+  })
+
+  it('rejeita source como string vazia', () => {
+    const result = leadUpdateSchema.safeParse({ source: '' })
     expect(result.success).toBe(false)
   })
 })
