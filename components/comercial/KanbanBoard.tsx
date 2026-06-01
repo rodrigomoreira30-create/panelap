@@ -34,6 +34,8 @@ export type KanbanLead = {
   venue_has_light: boolean
   budget: number | null
   status: string
+  source: string | null
+  tags: string[]
   assigned_to: string | null
   observations: string | null
   created_at: string
@@ -41,9 +43,18 @@ export type KanbanLead = {
   assignee: { id: string; name: string; avatar_url: string | null } | null
 }
 
+type Source = { key: string; label: string }
+
+const DEFAULT_SOURCES: Source[] = [
+  { key: 'referral',     label: 'Indicação' },
+  { key: 'social_media', label: 'Redes Sociais' },
+  { key: 'paid_traffic', label: 'Tráfego Pago' },
+]
+
 interface KanbanBoardProps {
   bandSlug: string
   pipelineStages: Stage[] | null
+  leadSources: Source[] | null
 }
 
 async function fetchLeads(): Promise<KanbanLead[]> {
@@ -53,22 +64,26 @@ async function fetchLeads(): Promise<KanbanLead[]> {
   return json.data.map((l: any) => ({
     ...l,
     budget: l.budget ? parseFloat(l.budget) : null,
+    tags: Array.isArray(l.tags) ? l.tags : [],
   }))
 }
 
-export function KanbanBoard({ bandSlug, pipelineStages }: KanbanBoardProps) {
+export function KanbanBoard({ bandSlug, pipelineStages, leadSources }: KanbanBoardProps) {
   const router = useRouter()
   const queryClient = useQueryClient()
   const { toast } = useToast()
   const [activeId, setActiveId] = useState<string | null>(null)
 
   const stages = pipelineStages ?? DEFAULT_STAGES
+  const sources = leadSources ?? DEFAULT_SOURCES
   const stageKeys = stages.map(s => s.key)
   const queryKey = ['leads', bandSlug]
 
   const { data: leads = [], isError, refetch } = useQuery({
     queryKey,
     queryFn: fetchLeads,
+    refetchOnMount: 'always',
+    staleTime: 0,
   })
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
@@ -158,13 +173,14 @@ export function KanbanBoard({ bandSlug, pipelineStages }: KanbanBoardProps) {
             status={stage.key}
             label={stage.label}
             leads={getLeadsByStatus(stage.key)}
+            sources={sources}
             onLeadClick={lead => router.push(`/${bandSlug}/comercial/${lead.id}`)}
             onLeadDelete={id => deleteMutation.mutate(id)}
           />
         ))}
       </div>
       <DragOverlay>
-        {activeLead && <LeadCard lead={activeLead} onClick={() => {}} />}
+        {activeLead && <LeadCard lead={activeLead} onClick={() => {}} sources={sources} />}
       </DragOverlay>
     </DndContext>
   )
