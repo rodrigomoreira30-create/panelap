@@ -2,15 +2,23 @@ import { prisma } from '@/lib/prisma'
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import { MessageThread } from '@/components/comercial/MessageThread'
-import { Badge } from '@/components/ui/badge'
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
+import { LeadEditPanel } from '@/components/comercial/LeadEditPanel'
+import { LeadDocuments } from '@/components/comercial/LeadDocuments'
 
-const statusLabels: Record<string, string> = {
-  new_lead: 'Novo Lead', attending: 'Em Atendimento',
-  proposal_sent: 'Proposta Enviada', negotiation: 'Negociação',
-  closed: 'Fechado', lost: 'Perdido',
-}
+const DEFAULT_STAGES = [
+  { key: 'new_lead',      label: 'Novo Lead' },
+  { key: 'attending',     label: 'Em Atendimento' },
+  { key: 'proposal_sent', label: 'Proposta Enviada' },
+  { key: 'negotiation',   label: 'Negociação' },
+  { key: 'closed',        label: 'Fechado' },
+  { key: 'lost',          label: 'Perdido' },
+]
+
+const DEFAULT_SOURCES = [
+  { key: 'referral',     label: 'Indicação' },
+  { key: 'social_media', label: 'Redes Sociais' },
+  { key: 'paid_traffic', label: 'Tráfego Pago' },
+]
 
 export default async function LeadDetailPage({
   params,
@@ -25,60 +33,61 @@ export default async function LeadDetailPage({
   const dbUser = await prisma.user.findUnique({ where: { supabase_id: user.id } })
   if (!dbUser) redirect('/login')
 
-  const lead = await prisma.lead.findUnique({
-    where: { id: leadId, band_id: dbUser.band_id },
-    include: {
-      messages: { orderBy: { sent_at: 'asc' } },
-      assignee: { select: { id: true, name: true } },
-    },
-  })
+  const [lead, band] = await Promise.all([
+    prisma.lead.findUnique({
+      where: { id: leadId, band_id: dbUser.band_id },
+      include: {
+        messages: { orderBy: { sent_at: 'asc' } },
+        assignee: { select: { id: true, name: true } },
+        documents: { orderBy: { created_at: 'desc' } },
+      },
+    }),
+    prisma.band.findUnique({
+      where: { id: dbUser.band_id },
+      select: { pipeline_stages: true, lead_sources: true },
+    }),
+  ])
 
   if (!lead) notFound()
 
+  const stages = (band?.pipeline_stages as { key: string; label: string }[] | null) ?? DEFAULT_STAGES
+  const sources = (band?.lead_sources as { key: string; label: string }[] | null) ?? DEFAULT_SOURCES
+
   return (
     <div className="flex h-full gap-6">
-      <div className="w-80 shrink-0 space-y-4">
-        <div>
-          <h2 className="text-xl font-bold">{lead.client_name}</h2>
-          <p className="text-gray-500">{lead.phone}</p>
-          <Badge className="mt-1">{statusLabels[lead.status]}</Badge>
-        </div>
-        <div className="space-y-2 text-sm">
-          {lead.event_date && (
-            <div>
-              <span className="font-medium">Data do evento:</span>{' '}
-              {format(new Date(lead.event_date as Date), "dd 'de' MMMM yyyy", { locale: ptBR })}
-            </div>
-          )}
-          {lead.city && (
-            <div><span className="font-medium">Cidade:</span> {lead.city}</div>
-          )}
-          {lead.venue_name && (
-            <div><span className="font-medium">Local:</span> {lead.venue_name}</div>
-          )}
-          {lead.budget != null && (
-            <div>
-              <span className="font-medium">Orçamento:</span>{' '}
-              R$ {parseFloat(lead.budget.toString()).toLocaleString('pt-BR')}
-            </div>
-          )}
-          <div>
-            <span className="font-medium">Som:</span>{' '}
-            {lead.venue_has_sound ? 'Incluso' : 'Não incluso'}
-          </div>
-          <div>
-            <span className="font-medium">Luz:</span>{' '}
-            {lead.venue_has_light ? 'Incluso' : 'Não incluso'}
-          </div>
-          {lead.assignee && (
-            <div><span className="font-medium">Responsável:</span> {lead.assignee.name}</div>
-          )}
-          {lead.observations && (
-            <div>
-              <span className="font-medium">Observações:</span>
-              <p className="text-gray-600 mt-1">{lead.observations}</p>
-            </div>
-          )}
+      <div className="w-80 shrink-0 space-y-4 overflow-y-auto pr-1">
+        <LeadEditPanel
+          lead={{
+            id:              lead.id,
+            client_name:     lead.client_name,
+            phone:           lead.phone,
+            event_type:      lead.event_type,
+            event_date:      lead.event_date ? lead.event_date.toISOString() : null,
+            city:            lead.city,
+            venue_name:      lead.venue_name,
+            budget:          lead.budget ? parseFloat(lead.budget.toString()) : null,
+            venue_has_sound: lead.venue_has_sound,
+            venue_has_light: lead.venue_has_light,
+            observations:    lead.observations,
+            status:          lead.status,
+            source:          lead.source,
+            tags:            (lead.tags as string[]) ?? [],
+            assignee:        lead.assignee,
+          }}
+          stages={stages}
+          sources={sources}
+        />
+
+        <div className="border-t pt-4">
+          <LeadDocuments
+            leadId={lead.id}
+            initialDocs={lead.documents.map(d => ({
+              id: d.id,
+              file_name: d.file_name,
+              file_url: d.file_url,
+              created_at: d.created_at.toISOString(),
+            }))}
+          />
         </div>
       </div>
       <div className="flex-1 border rounded-lg overflow-hidden flex flex-col">
