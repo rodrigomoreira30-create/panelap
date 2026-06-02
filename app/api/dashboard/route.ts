@@ -39,7 +39,7 @@ export async function GET(request: Request) {
   const pipelineStages = (dbUser.band.pipeline_stages as { key: string; label: string }[] | null) ?? DEFAULT_STAGES
 
   const startDate = new Date()
-  startDate.setDate(startDate.getDate() - days)
+  startDate.setDate(startDate.getDate() - (days - 1))
   startDate.setHours(0, 0, 0, 0)
 
   // KPI: leads abertos (fora dos status de fechamento)
