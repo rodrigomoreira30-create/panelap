@@ -33,7 +33,7 @@ export async function GET(request: Request) {
     where: { supabase_id: user.id },
     include: { band: true },
   })
-  if (!dbUser || dbUser.band.slug !== bandSlug) {
+  if (!dbUser || !dbUser.band || dbUser.band.slug !== bandSlug) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
