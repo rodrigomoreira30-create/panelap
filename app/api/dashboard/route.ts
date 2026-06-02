@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/prisma'
 import { EventStatus } from '@/lib/generated/prisma/enums'
 
+// 'closed'/'lost' — default pipeline terminal stages
+// 'closed_won'/'closed_lost' — common custom pipeline terminal stage names
 const CLOSED_STATUSES = ['closed', 'lost', 'closed_won', 'closed_lost']
 
 const DEFAULT_STAGES = [
@@ -23,7 +25,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const bandSlug = searchParams.get('bandSlug')
   const daysParam = searchParams.get('days')
-  const days = daysParam ? Math.min(Math.max(parseInt(daysParam, 10), 1), 365) : 30
+  const days = daysParam ? Math.min(Math.max(parseInt(daysParam, 10) || 30, 1), 365) : 30
 
   if (!bandSlug) return NextResponse.json({ error: 'bandSlug is required' }, { status: 400 })
 
@@ -36,7 +38,11 @@ export async function GET(request: Request) {
   }
 
   const bandId = dbUser.band.id
-  const pipelineStages = (dbUser.band.pipeline_stages as { key: string; label: string }[] | null) ?? DEFAULT_STAGES
+  const raw = dbUser.band.pipeline_stages
+  const pipelineStages: { key: string; label: string }[] =
+    Array.isArray(raw) && raw.length > 0
+      ? (raw as { key: string; label: string }[])
+      : DEFAULT_STAGES
 
   const startDate = new Date()
   startDate.setDate(startDate.getDate() - (days - 1))
