@@ -20,7 +20,7 @@ const eventTypeLabels: Record<string, string> = {
 const statusLabels: Record<string, string> = {
   pending:   'Pendente',
   confirmed: 'Confirmado',
-  declined:  'Recusado',
+  declined:  'Recusou',
 }
 
 function escapeICS(str: string): string {

@@ -53,4 +53,20 @@ describe('generateICS', () => {
     expect(result).not.toContain('BEGIN:VEVENT')
     expect(result).toContain('END:VCALENDAR')
   })
+
+  it('exibe label correto para status declined', () => {
+    const result = generateICS('João', [
+      {
+        id: 'em-3',
+        client_name: 'Ana',
+        event_type: 'party',
+        event_date: new Date('2026-10-01T00:00:00.000Z'),
+        event_time: null,
+        venue_name: 'Salão',
+        venue_address: null,
+        status: 'declined',
+      },
+    ])
+    expect(result).toContain('DESCRIPTION:Status: Recusou')
+  })
 })
