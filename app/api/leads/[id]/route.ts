@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/prisma'
 import { leadUpdateSchema } from '@/lib/validations/lead'
 import { eventBus } from '@/lib/events/internal-bus'
+import { getDefaultChecklist } from '@/lib/production/default-checklists'
 
 async function getSessionUser() {
   const supabase = await createClient()
@@ -55,24 +56,60 @@ export async function PATCH(
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   try {
+    const { tags, event_date, ...rest } = parsed.data
     const updated = await prisma.lead.update({
       where: { id, band_id: sessionUser.band_id },
       data: {
-        ...parsed.data,
-        event_date: parsed.data.event_date === undefined
+        ...rest,
+        ...(tags !== undefined && { tags: tags as unknown as object }),
+        event_date: event_date === undefined
           ? undefined
-          : parsed.data.event_date
-            ? new Date(parsed.data.event_date)
+          : event_date
+            ? new Date(event_date)
             : null,
       },
     })
 
     if (parsed.data.status === 'closed' && existing.status !== 'closed') {
       eventBus.emit('lead.closed', { lead_id: updated.id, band_id: updated.band_id })
+      // Inline: cria evento de produção sem depender do instrumentationHook
+      const existingEvent = await prisma.event.findUnique({ where: { lead_id: updated.id } })
+      if (!existingEvent) {
+        if (!updated.event_date) {
+          console.warn(`Lead ${updated.id} fechado sem data de evento — evento não criado.`)
+        } else {
+          const event = await prisma.event.create({
+            data: {
+              band_id:         updated.band_id,
+              lead_id:         updated.id,
+              client_name:     updated.client_name,
+              event_type:      updated.event_type,
+              event_date:      updated.event_date,
+              venue_name:      updated.venue_name ?? 'A definir',
+              venue_address:   updated.city ?? undefined,
+              venue_has_sound: updated.venue_has_sound,
+              venue_has_light: updated.venue_has_light,
+              value:           updated.budget ?? 0,
+              status:          'contracted',
+              notes:           updated.observations ?? undefined,
+            },
+          })
+          const defaultItems = getDefaultChecklist(updated.event_type)
+          await prisma.checklist.create({
+            data: {
+              event_id: event.id,
+              title: 'Checklist Operacional',
+              items: { create: defaultItems.map(d => ({ description: d.description, done: false })) },
+            },
+          })
+          console.log(`Evento ${event.id} criado para lead ${updated.id}`)
+        }
+      }
     }
 
     return NextResponse.json({ data: updated })
-  } catch {
+  } catch (err) {
+    console.error('PATCH lead error:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -95,9 +132,18 @@ export async function DELETE(
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   try {
+    // Apaga evento vinculado (e em cascata: contratos, checklists, músicos)
+    const event = await prisma.event.findUnique({ where: { lead_id: id } })
+    if (event) {
+      await prisma.document.deleteMany({ where: { event_id: event.id } })
+      await prisma.event.delete({ where: { id: event.id } })
+    }
+    await prisma.message.deleteMany({ where: { lead_id: id } })
+    await prisma.document.deleteMany({ where: { lead_id: id } })
     await prisma.lead.delete({ where: { id } })
     return NextResponse.json({ data: { deleted: true } })
-  } catch {
+  } catch (err) {
+    console.error('DELETE lead error:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
