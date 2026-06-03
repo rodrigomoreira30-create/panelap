@@ -1,6 +1,10 @@
-import Link from 'next/link'
+'use client'
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { CheckCircle } from 'lucide-react'
 
 type EventStatus = 'contracted' | 'active' | 'done'
 
@@ -36,7 +40,29 @@ type Props = {
   bandSlug: string
 }
 
-export function EventList({ events, bandSlug }: Props) {
+export function EventList({ events: initialEvents, bandSlug }: Props) {
+  const router = useRouter()
+  const [events, setEvents] = useState(initialEvents)
+  const [loadingId, setLoadingId] = useState<string | null>(null)
+
+  async function handleEquipeOk(e: React.MouseEvent, eventId: string) {
+    e.preventDefault()
+    e.stopPropagation()
+    setLoadingId(eventId)
+    setEvents(prev => prev.filter(ev => ev.id !== eventId))
+    try {
+      await fetch(`/api/events/${eventId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'done' }),
+      })
+    } catch {
+      router.refresh()
+    } finally {
+      setLoadingId(null)
+    }
+  }
+
   if (events.length === 0) {
     return (
       <div className="text-center py-12 text-gray-400">
@@ -55,12 +81,11 @@ export function EventList({ events, bandSlug }: Props) {
         const confirmedMusicians = event.event_musicians.filter(m => m.status === 'confirmed').length
 
         return (
-          <Link
-            key={event.id}
-            href={`/${bandSlug}/producao/${event.id}`}
-            className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
-          >
-            <div>
+          <div key={event.id} className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
+            <a
+              href={`/${bandSlug}/producao/${event.id}`}
+              className="flex-1 min-w-0 mr-4"
+            >
               <p className="font-medium text-gray-900">{event.client_name}</p>
               <p className="text-sm text-gray-500">
                 {format(new Date(event.event_date), "dd 'de' MMMM yyyy", { locale: ptBR })}
@@ -69,11 +94,23 @@ export function EventList({ events, bandSlug }: Props) {
               <p className="text-xs text-gray-400 mt-0.5">
                 Checklist: {pct}% · Músicos confirmados: {confirmedMusicians}/{event.event_musicians.length}
               </p>
+            </a>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${statusColors[event.status]}`}>
+                {statusLabels[event.status]}
+              </span>
+              <button
+                onClick={(e) => handleEquipeOk(e, event.id)}
+                disabled={loadingId === event.id}
+                className="flex items-center gap-1 text-xs px-3 py-1.5 bg-green-600 text-white rounded-full font-medium hover:bg-green-700 disabled:opacity-50 transition-colors"
+                title="Marcar equipe como confirmada e arquivar evento"
+              >
+                <CheckCircle size={13} />
+                Equipe OK
+              </button>
             </div>
-            <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${statusColors[event.status]}`}>
-              {statusLabels[event.status]}
-            </span>
-          </Link>
+          </div>
         )
       })}
     </div>
