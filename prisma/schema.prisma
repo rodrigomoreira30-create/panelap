@@ -88,9 +88,10 @@ model User {
   name        String
   email       String
   role        UserRole
-  phone       String?
-  avatar_url  String?
-  created_at  DateTime @default(now())
+  phone          String?
+  avatar_url     String?
+  schedule_token String   @unique @default(cuid())
+  created_at     DateTime @default(now())
 
   band               Band            @relation(fields: [band_id], references: [id], onDelete: Cascade)
   assigned_leads     Lead[]          @relation("AssignedLeads")
