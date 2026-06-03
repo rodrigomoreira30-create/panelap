@@ -30,7 +30,7 @@ export function TeamPanel({ eventId, musicians, bandMembers }: Props) {
     navigator.clipboard.writeText(url).then(() => {
       setCopiedId(musicianId)
       setTimeout(() => setCopiedId(null), 2000)
-    })
+    }).catch(() => {})
   }
 
   const alreadyAdded = new Set(musicians.map(m => m.user_id))
