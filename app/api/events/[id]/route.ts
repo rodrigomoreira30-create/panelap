@@ -17,7 +17,7 @@ export async function GET(
       lead: { select: { id: true, phone: true } },
       checklists: { include: { items: { orderBy: { id: 'asc' } } } },
       event_musicians: {
-        include: { user: { select: { id: true, name: true, avatar_url: true, schedule_token: true } } },
+        include: { user: true },
         orderBy: { id: 'asc' },
       },
       documents: { orderBy: { created_at: 'desc' } },
