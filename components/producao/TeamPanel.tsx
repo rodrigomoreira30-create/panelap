@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { X } from 'lucide-react'
+import { X, Link2, Check } from 'lucide-react'
 import type { EventData, EventMusician } from './EventDetailClient'
 
 const statusConfig: Record<string, { label: string; className: string }> = {
@@ -23,6 +23,15 @@ export function TeamPanel({ eventId, musicians, bandMembers }: Props) {
   const queryClient = useQueryClient()
   const queryKey = ['event', eventId]
   const [selectedUserId, setSelectedUserId] = useState('')
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  function handleCopyLink(token: string, musicianId: string) {
+    const url = `${window.location.origin}/musico/${token}`
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedId(musicianId)
+      setTimeout(() => setCopiedId(null), 2000)
+    })
+  }
 
   const alreadyAdded = new Set(musicians.map(m => m.user_id))
   const available = bandMembers.filter(m => !alreadyAdded.has(m.id))
@@ -87,6 +96,16 @@ export function TeamPanel({ eventId, musicians, bandMembers }: Props) {
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cfg.className}`}>
                 {cfg.label}
               </span>
+              <button
+                onClick={() => handleCopyLink(em.user.schedule_token, em.id)}
+                className="text-gray-400 hover:text-blue-500 transition-colors p-0.5"
+                aria-label="Copiar link da agenda"
+                title="Copiar link da agenda"
+              >
+                {copiedId === em.id
+                  ? <Check size={14} className="text-green-500" />
+                  : <Link2 size={14} />}
+              </button>
               <button
                 onClick={() => {
                   if (window.confirm('Remover músico do evento?')) removeMutation.mutate(em.id)

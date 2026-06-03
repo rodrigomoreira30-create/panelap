@@ -21,7 +21,7 @@ export type EventMusician = {
   user_id: string
   instrument: string | null
   status: 'pending' | 'confirmed' | 'declined'
-  user: { id: string; name: string; avatar_url: string | null }
+  user: { id: string; name: string; avatar_url: string | null; schedule_token: string }
 }
 
 export type EventData = {
