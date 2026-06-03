@@ -45,7 +45,20 @@ export function generateICS(musicianName: string, events: ICSEvent[]): string {
     'PRODID:-//PanelAp//Agenda//PT',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
+    `X-WR-CALNAME:${escapeICS(musicianName)} — Agenda`,
   ]
+
+  // RFC 5545: DTSTAMP é obrigatório, usa timestamp UTC atual
+  const now = new Date()
+  const dtstamp = [
+    now.getUTCFullYear(),
+    String(now.getUTCMonth() + 1).padStart(2, '0'),
+    String(now.getUTCDate()).padStart(2, '0'),
+  ].join('') + 'T' + [
+    String(now.getUTCHours()).padStart(2, '0'),
+    String(now.getUTCMinutes()).padStart(2, '0'),
+    String(now.getUTCSeconds()).padStart(2, '0'),
+  ].join('') + 'Z'
 
   for (const ev of events) {
     const { prop, value } = formatDTSTART(ev.event_date, ev.event_time)
@@ -57,7 +70,8 @@ export function generateICS(musicianName: string, events: ICSEvent[]): string {
 
     lines.push(
       'BEGIN:VEVENT',
-      `UID:${ev.id}@panelap`,
+      `UID:${ev.id.replace(/[\r\n]/g, '')}@panelap`,
+      `DTSTAMP:${dtstamp}`,
       `SUMMARY:${summary}`,
       `${prop}:${value}`,
       `LOCATION:${location}`,

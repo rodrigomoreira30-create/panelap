@@ -69,4 +69,9 @@ describe('generateICS', () => {
     ])
     expect(result).toContain('DESCRIPTION:Status: Recusou')
   })
+
+  it('usa CRLF como separador de linhas', () => {
+    const result = generateICS('Teste', [])
+    expect(result).toContain('BEGIN:VCALENDAR\r\nVERSION:2.0')
+  })
 })
