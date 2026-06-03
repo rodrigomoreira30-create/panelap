@@ -41,7 +41,7 @@ export default async function EventDetailPage({
       include: {
         checklists: { include: { items: { orderBy: { id: 'asc' } } } },
         event_musicians: {
-          include: { user: { select: { id: true, name: true, avatar_url: true } } },
+          include: { user: { select: { id: true, name: true, avatar_url: true, schedule_token: true } } },
           orderBy: { id: 'asc' },
         },
       },
