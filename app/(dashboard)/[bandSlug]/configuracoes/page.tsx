@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import { SubscriptionStatus } from '@/components/configuracoes/SubscriptionStatus'
 import { MemberList } from '@/components/configuracoes/MemberList'
+import { AddMember } from '@/components/configuracoes/AddMember'
 import { PipelineSettings } from '@/components/configuracoes/PipelineSettings'
 import { SourceSettings } from '@/components/configuracoes/SourceSettings'
 
@@ -55,6 +56,9 @@ export default async function ConfiguracoesPage({
       <section>
         <h2 className="text-lg font-semibold mb-3">Membros da Banda</h2>
         <MemberList members={members} currentUserId={dbUser.id} />
+        <div className="mt-3">
+          <AddMember />
+        </div>
       </section>
 
       <section>
