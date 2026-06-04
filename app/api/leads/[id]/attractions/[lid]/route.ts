@@ -34,12 +34,16 @@ export async function PATCH(
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 })
   }
 
-  const updated = await prisma.leadAttraction.update({
-    where: { id: lid },
-    data: parsed.data,
-  })
-
-  return NextResponse.json({ data: updated })
+  try {
+    const updated = await prisma.leadAttraction.update({
+      where: { id: lid },
+      data: parsed.data,
+    })
+    return NextResponse.json({ data: updated })
+  } catch (err) {
+    console.error('PATCH lead attraction error:', err)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 }
 
 export async function DELETE(
@@ -60,6 +64,11 @@ export async function DELETE(
   })
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  await prisma.leadAttraction.delete({ where: { id: lid } })
-  return NextResponse.json({ ok: true })
+  try {
+    await prisma.leadAttraction.delete({ where: { id: lid } })
+    return NextResponse.json({ ok: true })
+  } catch (err) {
+    console.error('DELETE lead attraction error:', err)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 }

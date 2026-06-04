@@ -68,15 +68,19 @@ export async function POST(
     return NextResponse.json({ error: 'Atração não encontrada ou inativa' }, { status: 404 })
   }
 
-  const leadAttraction = await prisma.leadAttraction.create({
-    data: {
-      lead_id:      leadId,
-      attraction_id: parsed.data.attraction_id,
-      name:         attraction.name,
-      custom_value: parsed.data.custom_value,
-      observations: parsed.data.observations ?? null,
-    },
-  })
-
-  return NextResponse.json({ data: leadAttraction }, { status: 201 })
+  try {
+    const leadAttraction = await prisma.leadAttraction.create({
+      data: {
+        lead_id:      leadId,
+        attraction_id: parsed.data.attraction_id,
+        name:         attraction.name,
+        custom_value: parsed.data.custom_value,
+        observations: parsed.data.observations ?? null,
+      },
+    })
+    return NextResponse.json({ data: leadAttraction }, { status: 201 })
+  } catch (err) {
+    console.error('POST lead attraction error:', err)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 }

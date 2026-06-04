@@ -36,9 +36,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 })
   }
 
-  const attraction = await prisma.attraction.create({
-    data: { ...parsed.data, band_id: sessionUser.band_id },
-  })
-
-  return NextResponse.json({ data: attraction }, { status: 201 })
+  try {
+    const attraction = await prisma.attraction.create({
+      data: { ...parsed.data, band_id: sessionUser.band_id },
+    })
+    return NextResponse.json({ data: attraction }, { status: 201 })
+  } catch (err) {
+    console.error('POST attraction error:', err)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 }
