@@ -28,6 +28,12 @@ interface LeadAttractionsProps {
   initialDiscount: number
 }
 
+function parseBRValue(raw: string): number {
+  // Aceita: 9800 | 9.800 | 9800,00 | 9.800,00
+  const cleaned = raw.trim().replace(/\./g, '').replace(',', '.')
+  return parseFloat(cleaned)
+}
+
 export function LeadAttractions({ leadId, initialAttractions, initialDiscount }: LeadAttractionsProps) {
   const [items, setItems] = useState<LeadAttractionItem[]>(initialAttractions)
   const [discount, setDiscount] = useState(initialDiscount)
@@ -57,7 +63,7 @@ export function LeadAttractions({ leadId, initialAttractions, initialDiscount }:
 
   async function handleAdd() {
     if (!selectedId) { setError('Selecione uma atração.'); return }
-    const val = parseFloat(addValue)
+    const val = parseBRValue(addValue)
     if (isNaN(val) || val < 0) { setError('Valor inválido.'); return }
     setAdding(true)
     setError('')
@@ -81,7 +87,7 @@ export function LeadAttractions({ leadId, initialAttractions, initialDiscount }:
   }
 
   async function handleValueBlur(item: LeadAttractionItem, rawValue: string) {
-    const val = parseFloat(rawValue)
+    const val = parseBRValue(rawValue)
     if (isNaN(val) || val === item.custom_value) return
     const res = await fetch(`/api/leads/${leadId}/attractions/${item.id}`, {
       method: 'PATCH',
@@ -110,7 +116,7 @@ export function LeadAttractions({ leadId, initialAttractions, initialDiscount }:
   }
 
   async function handleDiscountBlur() {
-    const val = parseFloat(discountInput)
+    const val = parseBRValue(discountInput)
     const safeVal = isNaN(val) || val < 0 ? 0 : val
     if (safeVal === discount) return
     const res = await fetch(`/api/leads/${leadId}`, {
@@ -162,11 +168,11 @@ export function LeadAttractions({ leadId, initialAttractions, initialDiscount }:
             </SelectContent>
           </Select>
           <Input
-            type="number"
+            type="text"
             value={addValue}
             onChange={e => setAddValue(e.target.value)}
             className="h-8 text-sm"
-            placeholder="Valor (R$)"
+            placeholder="Ex: 9800 ou 9.800,00"
           />
           <Textarea
             value={addObs}
@@ -202,7 +208,7 @@ export function LeadAttractions({ leadId, initialAttractions, initialDiscount }:
         <div className="flex justify-between items-center text-xs text-gray-500">
           <span>Desconto</span>
           <Input
-            type="number"
+            type="text"
             value={discountInput}
             onChange={e => setDiscountInput(e.target.value)}
             onBlur={handleDiscountBlur}
@@ -246,11 +252,12 @@ function AttractionRow({
       <div className="flex items-center gap-2">
         <span className="text-xs text-gray-500 shrink-0">Valor (R$)</span>
         <Input
-          type="number"
+          type="text"
           value={value}
           onChange={e => setValue(e.target.value)}
           onBlur={() => onValueBlur(item, value)}
           className="h-7 text-sm flex-1"
+          placeholder="Ex: 9800"
         />
       </div>
       <Textarea
