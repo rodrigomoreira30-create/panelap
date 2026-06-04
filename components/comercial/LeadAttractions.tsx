@@ -1,0 +1,265 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { Plus, X, Loader2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+
+type LeadAttractionItem = {
+  id: string
+  name: string
+  custom_value: number
+  observations: string | null
+}
+
+type CatalogAttraction = {
+  id: string
+  name: string
+  category: string | null
+  default_value: number
+  is_active: boolean
+}
+
+interface LeadAttractionsProps {
+  leadId: string
+  initialAttractions: LeadAttractionItem[]
+  initialDiscount: number
+}
+
+export function LeadAttractions({ leadId, initialAttractions, initialDiscount }: LeadAttractionsProps) {
+  const [items, setItems] = useState<LeadAttractionItem[]>(initialAttractions)
+  const [discount, setDiscount] = useState(initialDiscount)
+  const [discountInput, setDiscountInput] = useState(String(initialDiscount))
+  const [catalog, setCatalog] = useState<CatalogAttraction[]>([])
+  const [showAdd, setShowAdd] = useState(false)
+  const [selectedId, setSelectedId] = useState('')
+  const [addValue, setAddValue] = useState('')
+  const [addObs, setAddObs] = useState('')
+  const [adding, setAdding] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    fetch('/api/attractions')
+      .then(r => r.json())
+      .then(({ data }) => {
+        setCatalog((data as CatalogAttraction[]).filter(a => a.is_active))
+      })
+      .catch(() => {})
+  }, [])
+
+  function onCatalogSelect(id: string) {
+    setSelectedId(id)
+    const found = catalog.find(a => a.id === id)
+    if (found) setAddValue(String(found.default_value))
+  }
+
+  async function handleAdd() {
+    if (!selectedId) { setError('Selecione uma atração.'); return }
+    const val = parseFloat(addValue)
+    if (isNaN(val) || val < 0) { setError('Valor inválido.'); return }
+    setAdding(true)
+    setError('')
+    const res = await fetch(`/api/leads/${leadId}/attractions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ attraction_id: selectedId, custom_value: val, observations: addObs || undefined }),
+    })
+    setAdding(false)
+    if (res.ok) {
+      const { data } = await res.json()
+      setItems(prev => [...prev, { ...data, custom_value: parseFloat(data.custom_value.toString()) }])
+      setShowAdd(false)
+      setSelectedId('')
+      setAddValue('')
+      setAddObs('')
+    } else {
+      const d = await res.json()
+      setError(d.error ?? 'Erro ao adicionar.')
+    }
+  }
+
+  async function handleValueBlur(item: LeadAttractionItem, rawValue: string) {
+    const val = parseFloat(rawValue)
+    if (isNaN(val) || val === item.custom_value) return
+    const res = await fetch(`/api/leads/${leadId}/attractions/${item.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ custom_value: val }),
+    })
+    if (res.ok) {
+      setItems(prev => prev.map(x => x.id === item.id ? { ...x, custom_value: val } : x))
+    }
+  }
+
+  async function handleObsBlur(item: LeadAttractionItem, obs: string) {
+    const normalized = obs || null
+    if (normalized === item.observations) return
+    await fetch(`/api/leads/${leadId}/attractions/${item.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ observations: normalized }),
+    })
+    setItems(prev => prev.map(x => x.id === item.id ? { ...x, observations: normalized } : x))
+  }
+
+  async function handleRemove(id: string) {
+    const res = await fetch(`/api/leads/${leadId}/attractions/${id}`, { method: 'DELETE' })
+    if (res.ok) setItems(prev => prev.filter(x => x.id !== id))
+  }
+
+  async function handleDiscountBlur() {
+    const val = parseFloat(discountInput)
+    const safeVal = isNaN(val) || val < 0 ? 0 : val
+    if (safeVal === discount) return
+    const res = await fetch(`/api/leads/${leadId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ proposal_discount: safeVal }),
+    })
+    if (res.ok) {
+      setDiscount(safeVal)
+      setDiscountInput(String(safeVal))
+    }
+  }
+
+  const subtotal = items.reduce((s, i) => s + i.custom_value, 0)
+  const total = Math.max(0, subtotal - discount)
+
+  function fmt(n: number) {
+    return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+  }
+
+  return (
+    <div className="space-y-3 py-1">
+      {items.length === 0 && !showAdd && (
+        <p className="text-xs text-gray-400">Nenhuma atração adicionada.</p>
+      )}
+
+      {items.map(item => (
+        <AttractionRow
+          key={item.id}
+          item={item}
+          onValueBlur={handleValueBlur}
+          onObsBlur={handleObsBlur}
+          onRemove={handleRemove}
+        />
+      ))}
+
+      {showAdd ? (
+        <div className="border border-dashed border-indigo-300 rounded-lg p-3 space-y-2 bg-indigo-50/30">
+          <Select value={selectedId} onValueChange={onCatalogSelect}>
+            <SelectTrigger className="h-8 text-sm">
+              <SelectValue placeholder="Selecione a atração..." />
+            </SelectTrigger>
+            <SelectContent>
+              {catalog.map(a => (
+                <SelectItem key={a.id} value={a.id}>
+                  {a.name}{a.category ? ` · ${a.category}` : ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Input
+            type="number"
+            value={addValue}
+            onChange={e => setAddValue(e.target.value)}
+            className="h-8 text-sm"
+            placeholder="Valor (R$)"
+          />
+          <Textarea
+            value={addObs}
+            onChange={e => setAddObs(e.target.value)}
+            className="text-sm min-h-[56px] resize-none"
+            placeholder="Observações (opcional)"
+          />
+          {error && <p className="text-red-500 text-xs">{error}</p>}
+          <div className="flex gap-2">
+            <Button size="sm" onClick={handleAdd} disabled={adding} className="flex-1">
+              {adding ? <Loader2 size={13} className="animate-spin" /> : 'Confirmar'}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => { setShowAdd(false); setError('') }}>
+              Cancelar
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={() => setShowAdd(true)}
+          className="w-full border border-dashed border-indigo-300 rounded-lg py-2 text-xs text-indigo-500 hover:bg-indigo-50 transition-colors font-medium flex items-center justify-center gap-1"
+        >
+          <Plus size={13} /> Adicionar atração
+        </button>
+      )}
+
+      {/* Totais */}
+      <div className="border-t pt-3 space-y-1.5">
+        <div className="flex justify-between text-xs text-gray-500">
+          <span>Subtotal</span>
+          <span>{fmt(subtotal)}</span>
+        </div>
+        <div className="flex justify-between items-center text-xs text-gray-500">
+          <span>Desconto</span>
+          <Input
+            type="number"
+            value={discountInput}
+            onChange={e => setDiscountInput(e.target.value)}
+            onBlur={handleDiscountBlur}
+            className="h-7 w-28 text-right text-xs"
+            placeholder="0"
+          />
+        </div>
+        <div className="flex justify-between items-center text-sm font-bold text-gray-900 pt-1 border-t">
+          <span>Total da Proposta</span>
+          <span className="text-indigo-600">{fmt(total)}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function AttractionRow({
+  item,
+  onValueBlur,
+  onObsBlur,
+  onRemove,
+}: {
+  item: LeadAttractionItem
+  onValueBlur: (item: LeadAttractionItem, raw: string) => void
+  onObsBlur: (item: LeadAttractionItem, obs: string) => void
+  onRemove: (id: string) => void
+}) {
+  const [value, setValue] = useState(String(item.custom_value))
+  const [obs, setObs] = useState(item.observations ?? '')
+
+  return (
+    <div className="border rounded-lg p-3 space-y-2 bg-white">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium truncate">{item.name}</div>
+        </div>
+        <button onClick={() => onRemove(item.id)} className="text-gray-300 hover:text-red-500 transition-colors p-0.5 shrink-0">
+          <X size={14} />
+        </button>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-gray-500 shrink-0">Valor (R$)</span>
+        <Input
+          type="number"
+          value={value}
+          onChange={e => setValue(e.target.value)}
+          onBlur={() => onValueBlur(item, value)}
+          className="h-7 text-sm flex-1"
+        />
+      </div>
+      <Textarea
+        value={obs}
+        onChange={e => setObs(e.target.value)}
+        onBlur={() => onObsBlur(item, obs)}
+        placeholder="Observações..."
+        className="text-xs min-h-[48px] resize-none text-gray-500"
+      />
+    </div>
+  )
+}
