@@ -44,6 +44,7 @@ export default async function EventDetailPage({
           include: { user: { select: { id: true, name: true, avatar_url: true, schedule_token: true } } },
           orderBy: { id: 'asc' },
         },
+        lead: { include: { lead_attractions: { orderBy: { created_at: 'asc' } } } },
       },
     }),
     prisma.user.findMany({
@@ -75,10 +76,7 @@ export default async function EventDetailPage({
     })),
   })
 
-  const valueFormatted = parseFloat(event.value.toString()).toLocaleString('pt-BR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })
+  const attractions = event.lead?.lead_attractions ?? []
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
@@ -114,10 +112,6 @@ export default async function EventDetailPage({
             <span className="font-medium text-gray-700">Luz:</span>{' '}
             <span>{event.venue_has_light ? '✅ Incluso' : '❌ Providenciar'}</span>
           </div>
-          <div>
-            <span className="font-medium text-gray-700">Valor:</span>{' '}
-            <span>R$ {valueFormatted}</span>
-          </div>
           {event.technical_visit_date && (
             <div>
               <span className="font-medium text-gray-700">Visita técnica:</span>{' '}
@@ -130,6 +124,22 @@ export default async function EventDetailPage({
           <div>
             <h3 className="font-semibold text-gray-900 mb-1">Observações</h3>
             <p className="text-sm text-gray-600 whitespace-pre-wrap">{event.notes}</p>
+          </div>
+        )}
+
+        {attractions.length > 0 && (
+          <div>
+            <h3 className="font-semibold text-gray-900 mb-2">Atrações Contratadas</h3>
+            <div className="space-y-2">
+              {attractions.map(a => (
+                <div key={a.id} className="bg-gray-50 rounded-lg px-4 py-3 text-sm">
+                  <span className="font-medium text-gray-900">{a.name}</span>
+                  {a.observations && (
+                    <p className="text-gray-500 mt-0.5 whitespace-pre-wrap">{a.observations}</p>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
