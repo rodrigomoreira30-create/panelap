@@ -123,7 +123,7 @@ model Lead {
   observations    String?
   created_at        DateTime   @default(now())
   updated_at        DateTime   @updatedAt
-  proposal_discount Decimal?   @default(0)
+  proposal_discount Decimal?
 
   band             Band             @relation(fields: [band_id], references: [id], onDelete: Cascade)
   assignee         User?            @relation("AssignedLeads", fields: [assigned_to], references: [id])
@@ -289,6 +289,7 @@ model Attraction {
   lead_attractions LeadAttraction[]
 
   @@index([band_id])
+  @@unique([band_id, name])
 }
 
 model LeadAttraction {
@@ -304,4 +305,5 @@ model LeadAttraction {
   attraction Attraction? @relation(fields: [attraction_id], references: [id], onDelete: SetNull)
 
   @@index([lead_id])
+  @@index([attraction_id])
 }
