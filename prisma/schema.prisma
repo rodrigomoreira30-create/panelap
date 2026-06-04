@@ -79,6 +79,7 @@ model Band {
   events             Event[]
   contract_templates ContractTemplate[]
   documents          Document[]
+  attractions        Attraction[]
 }
 
 model User {
@@ -120,14 +121,16 @@ model Lead {
   source          String?
   assigned_to     String?
   observations    String?
-  created_at      DateTime   @default(now())
-  updated_at      DateTime   @updatedAt
+  created_at        DateTime   @default(now())
+  updated_at        DateTime   @updatedAt
+  proposal_discount Decimal?   @default(0)
 
-  band      Band       @relation(fields: [band_id], references: [id], onDelete: Cascade)
-  assignee  User?      @relation("AssignedLeads", fields: [assigned_to], references: [id])
-  messages  Message[]
-  documents Document[]
-  event     Event?
+  band             Band             @relation(fields: [band_id], references: [id], onDelete: Cascade)
+  assignee         User?            @relation("AssignedLeads", fields: [assigned_to], references: [id])
+  messages         Message[]
+  documents        Document[]
+  event            Event?
+  lead_attractions LeadAttraction[]
 
   @@index([band_id])
   @@index([assigned_to])
@@ -268,6 +271,37 @@ model Message {
   sent_at   DateTime         @default(now())
 
   lead Lead @relation(fields: [lead_id], references: [id], onDelete: Cascade)
+
+  @@index([lead_id])
+}
+
+model Attraction {
+  id            String   @id @default(cuid())
+  band_id       String
+  name          String
+  category      String?
+  description   String?
+  default_value Decimal  @default(0)
+  is_active     Boolean  @default(true)
+  created_at    DateTime @default(now())
+
+  band             Band             @relation(fields: [band_id], references: [id], onDelete: Cascade)
+  lead_attractions LeadAttraction[]
+
+  @@index([band_id])
+}
+
+model LeadAttraction {
+  id            String   @id @default(cuid())
+  lead_id       String
+  attraction_id String?
+  name          String
+  custom_value  Decimal
+  observations  String?
+  created_at    DateTime @default(now())
+
+  lead       Lead        @relation(fields: [lead_id], references: [id], onDelete: Cascade)
+  attraction Attraction? @relation(fields: [attraction_id], references: [id], onDelete: SetNull)
 
   @@index([lead_id])
 }
