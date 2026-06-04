@@ -6,6 +6,7 @@ import { MemberList } from '@/components/configuracoes/MemberList'
 import { AddMember } from '@/components/configuracoes/AddMember'
 import { PipelineSettings } from '@/components/configuracoes/PipelineSettings'
 import { SourceSettings } from '@/components/configuracoes/SourceSettings'
+import { AttractionSettings } from '@/components/configuracoes/AttractionSettings'
 
 export default async function ConfiguracoesPage({
   params,
@@ -29,7 +30,7 @@ export default async function ConfiguracoesPage({
   // Validate band membership
   if (!dbUser.band || dbUser.band.slug !== bandSlug) return notFound()
 
-  const [members, band] = await Promise.all([
+  const [members, band, attractions] = await Promise.all([
     prisma.user.findMany({
       where: { band_id: dbUser.band_id },
       select: { id: true, name: true, email: true, role: true },
@@ -38,6 +39,10 @@ export default async function ConfiguracoesPage({
     prisma.band.findUnique({
       where: { id: dbUser.band_id },
       select: { pipeline_stages: true, lead_sources: true },
+    }),
+    prisma.attraction.findMany({
+      where: { band_id: dbUser.band_id },
+      orderBy: [{ is_active: 'desc' }, { name: 'asc' }],
     }),
   ])
 
@@ -69,6 +74,20 @@ export default async function ConfiguracoesPage({
       <section>
         <h2 className="text-lg font-semibold mb-3">Fontes de Lead</h2>
         <SourceSettings initialSources={band?.lead_sources as { key: string; label: string }[] | null} />
+      </section>
+
+      <section>
+        <h2 className="text-lg font-semibold mb-3">Atrações Disponíveis</h2>
+        <AttractionSettings
+          initialAttractions={attractions.map(a => ({
+            id: a.id,
+            name: a.name,
+            category: a.category,
+            description: a.description,
+            default_value: parseFloat(a.default_value.toString()),
+            is_active: a.is_active,
+          }))}
+        />
       </section>
     </div>
   )
