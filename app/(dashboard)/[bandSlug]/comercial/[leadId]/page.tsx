@@ -3,7 +3,6 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import { MessageThread } from '@/components/comercial/MessageThread'
 import { LeadEditPanel } from '@/components/comercial/LeadEditPanel'
-import { LeadDocuments } from '@/components/comercial/LeadDocuments'
 
 const DEFAULT_STAGES = [
   { key: 'new_lead',      label: 'Novo Lead' },
@@ -40,6 +39,7 @@ export default async function LeadDetailPage({
         messages: { orderBy: { sent_at: 'asc' } },
         assignee: { select: { id: true, name: true } },
         documents: { orderBy: { created_at: 'desc' } },
+        lead_attractions: { orderBy: { created_at: 'asc' } },
       },
     }),
     prisma.band.findUnique({
@@ -55,7 +55,7 @@ export default async function LeadDetailPage({
 
   return (
     <div className="flex h-full gap-6">
-      <div className="w-80 shrink-0 space-y-4 overflow-y-auto pr-1">
+      <div className="w-80 shrink-0 overflow-y-auto pr-1">
         <LeadEditPanel
           lead={{
             id:              lead.id,
@@ -76,19 +76,20 @@ export default async function LeadDetailPage({
           }}
           stages={stages}
           sources={sources}
+          initialDocs={lead.documents.map(d => ({
+            id: d.id,
+            file_name: d.file_name,
+            file_url: d.file_url,
+            created_at: d.created_at.toISOString(),
+          }))}
+          initialAttractions={lead.lead_attractions.map(a => ({
+            id: a.id,
+            name: a.name,
+            custom_value: parseFloat(a.custom_value.toString()),
+            observations: a.observations,
+          }))}
+          initialDiscount={lead.proposal_discount ? parseFloat(lead.proposal_discount.toString()) : 0}
         />
-
-        <div className="border-t pt-4">
-          <LeadDocuments
-            leadId={lead.id}
-            initialDocs={lead.documents.map(d => ({
-              id: d.id,
-              file_name: d.file_name,
-              file_url: d.file_url,
-              created_at: d.created_at.toISOString(),
-            }))}
-          />
-        </div>
       </div>
       <div className="flex-1 border rounded-lg overflow-hidden flex flex-col">
         <div className="p-3 border-b bg-gray-50">

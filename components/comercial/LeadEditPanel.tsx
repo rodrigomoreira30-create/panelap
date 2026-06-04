@@ -11,6 +11,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { LeadStatusSelect } from './LeadStatusSelect'
 import { TagsInput } from './TagsInput'
+import { LeadAttractions } from './LeadAttractions'
+import { LeadDocuments } from './LeadDocuments'
 
 type Stage = { key: string; label: string }
 type Source = { key: string; label: string }
@@ -37,6 +39,9 @@ interface LeadEditPanelProps {
   lead: LeadData
   stages: Stage[]
   sources: Source[]
+  initialDocs: { id: string; file_name: string; file_url: string; created_at: string }[]
+  initialAttractions: { id: string; name: string; custom_value: number; observations: string | null }[]
+  initialDiscount: number
 }
 
 const eventTypeLabels: Record<string, string> = {
@@ -57,11 +62,12 @@ function formatDateDisplay(dateStr: string | null) {
   return format(new Date(year, month - 1, day), "dd 'de' MMMM yyyy", { locale: ptBR })
 }
 
-export function LeadEditPanel({ lead, stages, sources }: LeadEditPanelProps) {
+export function LeadEditPanel({ lead, stages, sources, initialDocs, initialAttractions, initialDiscount }: LeadEditPanelProps) {
   const router = useRouter()
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [tab, setTab] = useState<'dados' | 'atracoes' | 'docs'>('dados')
 
   // `displayed` tracks what's shown in view mode — updates immediately after save
   const [displayed, setDisplayed] = useState<LeadData>(lead)
@@ -143,181 +149,216 @@ export function LeadEditPanel({ lead, stages, sources }: LeadEditPanelProps) {
   }
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0">
-          {editing ? (
-            <Input
-              value={form.client_name}
-              onChange={e => set('client_name', e.target.value)}
-              className="text-lg font-bold h-9"
-            />
-          ) : (
-            <h2 className="text-xl font-bold truncate">{displayed.client_name}</h2>
-          )}
-          {editing ? (
-            <Input
-              value={form.phone}
-              onChange={e => set('phone', e.target.value)}
-              className="mt-1 h-8 text-sm text-gray-500"
-            />
-          ) : (
-            <p className="text-gray-500 text-sm">{displayed.phone}</p>
-          )}
-        </div>
-        {!editing ? (
-          <Button variant="outline" size="sm" onClick={() => setEditing(true)} className="shrink-0">
-            <Pencil size={13} className="mr-1" /> Editar
-          </Button>
-        ) : (
-          <div className="flex gap-1 shrink-0">
-            <Button size="sm" onClick={handleSave} disabled={saving}>
-              {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
-            </Button>
-            <Button size="sm" variant="outline" onClick={handleCancel} disabled={saving}>
-              <X size={13} />
-            </Button>
-          </div>
-        )}
+    <div className="flex flex-col h-full">
+      {/* Tab bar */}
+      <div className="flex border-b shrink-0">
+        {(['dados', 'atracoes', 'docs'] as const).map(t => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`flex-1 py-2 text-xs font-medium transition-colors border-b-2 -mb-px ${
+              tab === t
+                ? 'border-indigo-500 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {t === 'dados' ? 'Dados' : t === 'atracoes' ? 'Atrações' : 'Docs'}
+          </button>
+        ))}
       </div>
 
-      {/* Status */}
-      <LeadStatusSelect leadId={lead.id} currentStatus={displayed.status} stages={stages} />
+      <div className="flex-1 overflow-y-auto p-1 pt-3">
+        {tab === 'dados' && (
+          <div className="space-y-4">
+            {/* Header */}
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                {editing ? (
+                  <Input
+                    value={form.client_name}
+                    onChange={e => set('client_name', e.target.value)}
+                    className="text-lg font-bold h-9"
+                  />
+                ) : (
+                  <h2 className="text-xl font-bold truncate">{displayed.client_name}</h2>
+                )}
+                {editing ? (
+                  <Input
+                    value={form.phone}
+                    onChange={e => set('phone', e.target.value)}
+                    className="mt-1 h-8 text-sm text-gray-500"
+                  />
+                ) : (
+                  <p className="text-gray-500 text-sm">{displayed.phone}</p>
+                )}
+              </div>
+              {!editing ? (
+                <Button variant="outline" size="sm" onClick={() => setEditing(true)} className="shrink-0">
+                  <Pencil size={13} className="mr-1" /> Editar
+                </Button>
+              ) : (
+                <div className="flex gap-1 shrink-0">
+                  <Button size="sm" onClick={handleSave} disabled={saving}>
+                    {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={handleCancel} disabled={saving}>
+                    <X size={13} />
+                  </Button>
+                </div>
+              )}
+            </div>
 
-      {/* Tags */}
-      <TagsInput leadId={lead.id} initialTags={displayed.tags} />
+            {/* Status */}
+            <LeadStatusSelect leadId={lead.id} currentStatus={displayed.status} stages={stages} />
 
-      {/* Campos */}
-      <div className="space-y-2 text-sm">
-        <div>
-          <span className="font-medium">Tipo:</span>{' '}
-          {eventTypeLabels[displayed.event_type] ?? displayed.event_type}
-        </div>
+            {/* Tags */}
+            <TagsInput leadId={lead.id} initialTags={displayed.tags} />
 
-        <div>
-          <span className="font-medium">Fonte:</span>{' '}
-          {editing ? (
-            <Select value={form.source} onValueChange={v => set('source', v)}>
-              <SelectTrigger className="mt-1 h-8 text-sm">
-                <SelectValue placeholder="Selecione a fonte" />
-              </SelectTrigger>
-              <SelectContent>
-                {sources.map(s => (
-                  <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (() => {
-            const src = sources.find(s => s.key === displayed.source)
-            return src ? <span>{src.label}</span> : <span className="text-gray-400">Não informada</span>
-          })()}
-        </div>
+            {/* Campos */}
+            <div className="space-y-2 text-sm">
+              <div>
+                <span className="font-medium">Tipo:</span>{' '}
+                {eventTypeLabels[displayed.event_type] ?? displayed.event_type}
+              </div>
 
-        <div>
-          <span className="font-medium">Data do evento:</span>{' '}
-          {editing ? (
-            <Input
-              type="date"
-              value={form.event_date}
-              onChange={e => set('event_date', e.target.value)}
-              className="mt-1 h-8 text-sm"
-            />
-          ) : (
-            formatDateDisplay(displayed.event_date) ?? (
-              <span className="text-gray-400">Não informada</span>
-            )
-          )}
-        </div>
+              <div>
+                <span className="font-medium">Fonte:</span>{' '}
+                {editing ? (
+                  <Select value={form.source} onValueChange={v => set('source', v)}>
+                    <SelectTrigger className="mt-1 h-8 text-sm">
+                      <SelectValue placeholder="Selecione a fonte" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {sources.map(s => (
+                        <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (() => {
+                  const src = sources.find(s => s.key === displayed.source)
+                  return src ? <span>{src.label}</span> : <span className="text-gray-400">Não informada</span>
+                })()}
+              </div>
 
-        <div>
-          <span className="font-medium">Cidade:</span>{' '}
-          {editing ? (
-            <Input
-              value={form.city}
-              onChange={e => set('city', e.target.value)}
-              className="mt-1 h-8 text-sm"
-              placeholder="Cidade"
-            />
-          ) : (
-            displayed.city ?? <span className="text-gray-400">Não informada</span>
-          )}
-        </div>
+              <div>
+                <span className="font-medium">Data do evento:</span>{' '}
+                {editing ? (
+                  <Input
+                    type="date"
+                    value={form.event_date}
+                    onChange={e => set('event_date', e.target.value)}
+                    className="mt-1 h-8 text-sm"
+                  />
+                ) : (
+                  formatDateDisplay(displayed.event_date) ?? (
+                    <span className="text-gray-400">Não informada</span>
+                  )
+                )}
+              </div>
 
-        <div>
-          <span className="font-medium">Local:</span>{' '}
-          {editing ? (
-            <Input
-              value={form.venue_name}
-              onChange={e => set('venue_name', e.target.value)}
-              className="mt-1 h-8 text-sm"
-              placeholder="Nome do local"
-            />
-          ) : (
-            displayed.venue_name ?? <span className="text-gray-400">Não informado</span>
-          )}
-        </div>
+              <div>
+                <span className="font-medium">Cidade:</span>{' '}
+                {editing ? (
+                  <Input
+                    value={form.city}
+                    onChange={e => set('city', e.target.value)}
+                    className="mt-1 h-8 text-sm"
+                    placeholder="Cidade"
+                  />
+                ) : (
+                  displayed.city ?? <span className="text-gray-400">Não informada</span>
+                )}
+              </div>
 
-        <div>
-          <span className="font-medium">Orçamento:</span>{' '}
-          {editing ? (
-            <Input
-              type="number"
-              value={form.budget}
-              onChange={e => set('budget', e.target.value)}
-              className="mt-1 h-8 text-sm"
-              placeholder="0,00"
-            />
-          ) : displayed.budget != null ? (
-            `R$ ${displayed.budget.toLocaleString('pt-BR')}`
-          ) : (
-            <span className="text-gray-400">Não informado</span>
-          )}
-        </div>
+              <div>
+                <span className="font-medium">Local:</span>{' '}
+                {editing ? (
+                  <Input
+                    value={form.venue_name}
+                    onChange={e => set('venue_name', e.target.value)}
+                    className="mt-1 h-8 text-sm"
+                    placeholder="Nome do local"
+                  />
+                ) : (
+                  displayed.venue_name ?? <span className="text-gray-400">Não informado</span>
+                )}
+              </div>
 
-        {editing ? (
-          <div className="flex gap-4 pt-1">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={form.venue_has_sound}
-                onChange={e => set('venue_has_sound', e.target.checked)} />
-              <span>Som incluso</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={form.venue_has_light}
-                onChange={e => set('venue_has_light', e.target.checked)} />
-              <span>Luz inclusa</span>
-            </label>
-          </div>
-        ) : (
-          <div className="flex gap-3">
-            <span><span className="font-medium">Som:</span> {displayed.venue_has_sound ? 'Incluso' : 'Não incluso'}</span>
-            <span><span className="font-medium">Luz:</span> {displayed.venue_has_light ? 'Incluso' : 'Não incluso'}</span>
+              <div>
+                <span className="font-medium">Orçamento:</span>{' '}
+                {editing ? (
+                  <Input
+                    type="number"
+                    value={form.budget}
+                    onChange={e => set('budget', e.target.value)}
+                    className="mt-1 h-8 text-sm"
+                    placeholder="0,00"
+                  />
+                ) : displayed.budget != null ? (
+                  `R$ ${displayed.budget.toLocaleString('pt-BR')}`
+                ) : (
+                  <span className="text-gray-400">Não informado</span>
+                )}
+              </div>
+
+              {editing ? (
+                <div className="flex gap-4 pt-1">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={form.venue_has_sound}
+                      onChange={e => set('venue_has_sound', e.target.checked)} />
+                    <span>Som incluso</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={form.venue_has_light}
+                      onChange={e => set('venue_has_light', e.target.checked)} />
+                    <span>Luz inclusa</span>
+                  </label>
+                </div>
+              ) : (
+                <div className="flex gap-3">
+                  <span><span className="font-medium">Som:</span> {displayed.venue_has_sound ? 'Incluso' : 'Não incluso'}</span>
+                  <span><span className="font-medium">Luz:</span> {displayed.venue_has_light ? 'Incluso' : 'Não incluso'}</span>
+                </div>
+              )}
+
+              {displayed.assignee && (
+                <div><span className="font-medium">Responsável:</span> {displayed.assignee.name}</div>
+              )}
+
+              <div>
+                <span className="font-medium">Observações:</span>
+                {editing ? (
+                  <Textarea
+                    value={form.observations}
+                    onChange={e => set('observations', e.target.value)}
+                    className="mt-1 text-sm resize-none"
+                    rows={3}
+                    placeholder="Observações sobre o lead..."
+                  />
+                ) : displayed.observations ? (
+                  <p className="text-gray-600 mt-1">{displayed.observations}</p>
+                ) : (
+                  <span className="text-gray-400"> Nenhuma</span>
+                )}
+              </div>
+            </div>
+
+            {error && <p className="text-red-500 text-xs">{error}</p>}
           </div>
         )}
 
-        {displayed.assignee && (
-          <div><span className="font-medium">Responsável:</span> {displayed.assignee.name}</div>
+        {tab === 'atracoes' && (
+          <LeadAttractions
+            leadId={lead.id}
+            initialAttractions={initialAttractions}
+            initialDiscount={initialDiscount}
+          />
         )}
 
-        <div>
-          <span className="font-medium">Observações:</span>
-          {editing ? (
-            <Textarea
-              value={form.observations}
-              onChange={e => set('observations', e.target.value)}
-              className="mt-1 text-sm resize-none"
-              rows={3}
-              placeholder="Observações sobre o lead..."
-            />
-          ) : displayed.observations ? (
-            <p className="text-gray-600 mt-1">{displayed.observations}</p>
-          ) : (
-            <span className="text-gray-400"> Nenhuma</span>
-          )}
-        </div>
+        {tab === 'docs' && (
+          <LeadDocuments leadId={lead.id} initialDocs={initialDocs} />
+        )}
       </div>
-
-      {error && <p className="text-red-500 text-xs">{error}</p>}
     </div>
   )
 }
