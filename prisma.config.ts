@@ -1,7 +1,9 @@
 // Prisma 7 configuration file
 // Connection URLs are managed here instead of schema.prisma
 // See: https://pris.ly/d/config-datasource
-import "dotenv/config";
+import { config } from "dotenv";
+config({ path: ".env.local", override: true });
+config();
 import { defineConfig } from "prisma/config";
 
 export default defineConfig({

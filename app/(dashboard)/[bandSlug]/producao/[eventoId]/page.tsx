@@ -3,23 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import { EventDetailClient } from '@/components/producao/EventDetailClient'
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
-
-const eventTypeLabels: Record<string, string> = {
-  wedding: 'Casamento', party: 'Festa', show: 'Show',
-  corporate: 'Corporativo', other: 'Outro',
-}
-
-const statusLabels: Record<string, string> = {
-  contracted: 'Contratado', active: 'Em andamento', done: 'Concluído',
-}
-
-const statusColors: Record<string, string> = {
-  contracted: 'bg-blue-100 text-blue-700',
-  active: 'bg-green-100 text-green-700',
-  done: 'bg-gray-100 text-gray-600',
-}
+import { EventAlignmentNotes } from '@/components/producao/EventAlignmentNotes'
+import { EventInfoPanel } from '@/components/producao/EventInfoPanel'
 
 export default async function EventDetailPage({
   params,
@@ -81,51 +66,19 @@ export default async function EventDetailPage({
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
       <div className="space-y-8 max-w-4xl">
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{event.client_name}</h1>
-            <p className="text-gray-500">
-              {format(new Date(event.event_date), "dd 'de' MMMM yyyy", { locale: ptBR })}
-              {event.event_time && ` às ${event.event_time}`}
-            </p>
-          </div>
-          <div className="flex flex-col items-end gap-2">
-            <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${statusColors[event.status] ?? ''}`}>
-              {statusLabels[event.status] ?? event.status}
-            </span>
-            <span className="text-xs text-gray-500">
-              {eventTypeLabels[event.event_type] ?? event.event_type}
-            </span>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 text-sm bg-gray-50 rounded-lg p-4">
-          <div><span className="font-medium text-gray-700">Local:</span> <span>{event.venue_name}</span></div>
-          {event.venue_address && (
-            <div><span className="font-medium text-gray-700">Endereço:</span> <span>{event.venue_address}</span></div>
-          )}
-          <div>
-            <span className="font-medium text-gray-700">Som:</span>{' '}
-            <span>{event.venue_has_sound ? '✅ Incluso' : '❌ Providenciar'}</span>
-          </div>
-          <div>
-            <span className="font-medium text-gray-700">Luz:</span>{' '}
-            <span>{event.venue_has_light ? '✅ Incluso' : '❌ Providenciar'}</span>
-          </div>
-          {event.technical_visit_date && (
-            <div>
-              <span className="font-medium text-gray-700">Visita técnica:</span>{' '}
-              <span>{format(new Date(event.technical_visit_date), 'dd/MM/yyyy', { locale: ptBR })}</span>
-            </div>
-          )}
-        </div>
-
-        {event.notes && (
-          <div>
-            <h3 className="font-semibold text-gray-900 mb-1">Observações</h3>
-            <p className="text-sm text-gray-600 whitespace-pre-wrap">{event.notes}</p>
-          </div>
-        )}
+        <EventInfoPanel event={{
+          id:              event.id,
+          client_name:     event.client_name,
+          event_type:      event.event_type,
+          event_date:      event.event_date.toISOString(),
+          event_time:      event.event_time ?? null,
+          venue_name:      event.venue_name,
+          venue_address:   event.venue_address ?? null,
+          venue_has_sound: event.venue_has_sound,
+          venue_has_light: event.venue_has_light,
+          value:           parseFloat(event.value.toString()),
+          status:          event.status,
+        }} />
 
         {attractions.length > 0 && (
           <div>
@@ -144,6 +97,8 @@ export default async function EventDetailPage({
         )}
 
         <EventDetailClient eventoId={eventoId} bandMembers={bandMembers} />
+
+        <EventAlignmentNotes eventId={eventoId} initialNotes={event.notes ?? null} />
       </div>
     </HydrationBoundary>
   )

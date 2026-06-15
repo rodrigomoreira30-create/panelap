@@ -1,4 +1,3 @@
-import { prisma } from '@/lib/prisma'
 import { eventBus } from '@/lib/events/internal-bus'
 import { runContractsAgent } from '@/lib/claude/agents/contracts-agent'
 

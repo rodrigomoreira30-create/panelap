@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { ContractFull } from '@/types'
 import { Lead } from '@/lib/generated/prisma/client'
 import { ContractStatusBadge } from './ContractStatusBadge'
-import { fillTemplate, buildContractData, LeadForContract } from '@/lib/contracts/template-fill'
+import { fillTemplate, buildContractData } from '@/lib/contracts/template-fill'
 
 // ContractFull has event: Event (no lead relation). Callers that want
 // template fill to work should pass the event with its lead included.

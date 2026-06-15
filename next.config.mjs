@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    instrumentationHook: true,
+    // instrumentationHook: true, // temporariamente desabilitado - bug no Next.js 14.2.35 com middleware
   },
 };
 

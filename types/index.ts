@@ -1,14 +1,14 @@
 import type {
   Band, User, Lead, Event, Contract, ContractTemplate,
   Checklist, ChecklistItem, EventMusician, Document, Message,
-  UserRole, LeadStatus, EventType, ContractStatus,
+  UserRole, EventType, ContractStatus,
   EventStatus, DocumentType, MusicianConfirmStatus,
 } from '@/lib/generated/prisma/client'
 
 export type {
   Band, User, Lead, Event, Contract, ContractTemplate,
   Checklist, ChecklistItem, EventMusician, Document, Message,
-  UserRole, LeadStatus, EventType, ContractStatus,
+  UserRole, EventType, ContractStatus,
   EventStatus, DocumentType, MusicianConfirmStatus,
 }
 

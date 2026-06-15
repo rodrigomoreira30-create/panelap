@@ -55,15 +55,17 @@ export async function PATCH(
   })
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+  const { event_date, technical_visit_date, ...rest } = parsed.data
   const updated = await prisma.event.update({
     where: { id },
     data: {
-      ...parsed.data,
-      technical_visit_date: parsed.data.technical_visit_date !== undefined
-        ? parsed.data.technical_visit_date === null
-          ? null
-          : new Date(parsed.data.technical_visit_date)
-        : undefined,
+      ...rest,
+      ...(event_date !== undefined && {
+        event_date: new Date(event_date),
+      }),
+      ...(technical_visit_date !== undefined && {
+        technical_visit_date: technical_visit_date ? new Date(technical_visit_date) : null,
+      }),
     },
   })
 

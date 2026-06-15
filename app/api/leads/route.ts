@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/prisma'
 import { leadCreateSchema } from '@/lib/validations/lead'
-import { eventBus } from '@/lib/events/internal-bus'
 
 async function getSessionUser() {
   const supabase = await createClient()

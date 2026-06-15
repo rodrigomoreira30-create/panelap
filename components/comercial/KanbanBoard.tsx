@@ -85,8 +85,8 @@ export function KanbanBoard({ bandSlug, pipelineStages, leadSources }: KanbanBoa
   const { data: leads = [], isError, refetch } = useQuery({
     queryKey,
     queryFn: fetchLeads,
-    refetchOnMount: 'always',
-    staleTime: 0,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
   })
 
   const allTags = useMemo(() => {
@@ -135,8 +135,10 @@ export function KanbanBoard({ bandSlug, pipelineStages, leadSources }: KanbanBoa
       queryClient.setQueryData(queryKey, context?.previous)
       toast({ title: 'Erro ao mover lead', description: 'Tente novamente.', variant: 'destructive' })
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey })
+    onSuccess: (_data, { newStatus }) => {
+      if (newStatus === 'closed') {
+        queryClient.invalidateQueries({ queryKey })
+      }
     },
   })
 

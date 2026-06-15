@@ -36,10 +36,12 @@ export default async function ComercialPage({
       })
       return leads.map(l => ({
         ...l,
-        budget: l.budget ? parseFloat(l.budget.toString()) : null,
-        event_date: l.event_date ? l.event_date.toISOString() : null,
-        created_at: l.created_at.toISOString(),
-        updated_at: l.updated_at.toISOString(),
+        budget:            l.budget ? parseFloat(l.budget.toString()) : null,
+        proposal_discount: l.proposal_discount ? parseFloat(l.proposal_discount.toString()) : null,
+        event_date:        l.event_date ? l.event_date.toISOString() : null,
+        created_at:        l.created_at.toISOString(),
+        updated_at:        l.updated_at.toISOString(),
+        tags:              Array.isArray(l.tags) ? l.tags : [],
       }))
     },
   })

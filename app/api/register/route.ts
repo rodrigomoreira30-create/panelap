@@ -47,11 +47,9 @@ export async function POST(request: Request) {
     const existing = await prisma.band.findUnique({ where: { slug } })
     if (existing) slug = `${slug}-${Date.now()}`
 
-    const asaasCustomer = await createAsaasCustomer({
-      name: band_name,
-      email,
-      cpfCnpj: cpf_cnpj,
-    }).catch(() => null)
+    const asaasCustomer = process.env.ASAAS_API_KEY
+      ? await createAsaasCustomer({ name: band_name, email, cpfCnpj: cpf_cnpj }).catch(() => null)
+      : null
 
     const band = await prisma.band.create({
       data: {

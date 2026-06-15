@@ -26,6 +26,10 @@ export default async function DashboardLayout({
 
   if (!dbUser || !dbUser.band || dbUser.band.slug !== bandSlug) redirect('/login')
 
+  if (dbUser.role === 'musician') {
+    redirect(dbUser.schedule_token ? `/musico/${dbUser.schedule_token}` : '/login')
+  }
+
   const sessionUser: SessionUser = {
     id: dbUser.id,
     band_id: dbUser.band_id,
