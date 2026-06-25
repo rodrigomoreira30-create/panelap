@@ -36,11 +36,17 @@ interface EventInfo {
   status: string
 }
 
-interface EventInfoPanelProps {
-  event: EventInfo
+interface Attraction {
+  id: string
+  name: string
 }
 
-export function EventInfoPanel({ event }: EventInfoPanelProps) {
+interface EventInfoPanelProps {
+  event: EventInfo
+  attractions?: Attraction[]
+}
+
+export function EventInfoPanel({ event, attractions = [] }: EventInfoPanelProps) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -146,6 +152,18 @@ export function EventInfoPanel({ event }: EventInfoPanelProps) {
             <p className="text-gray-500">
               {dateDisplay}{data.event_time && ` às ${data.event_time}`}
             </p>
+          )}
+          {!editing && attractions.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-2">
+              {attractions.map(a => (
+                <span
+                  key={a.id}
+                  className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100"
+                >
+                  {a.name}
+                </span>
+              ))}
+            </div>
           )}
         </div>
         <div className="flex flex-col items-end gap-2">

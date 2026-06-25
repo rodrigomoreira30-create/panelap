@@ -66,35 +66,22 @@ export default async function EventDetailPage({
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
       <div className="space-y-8 max-w-4xl">
-        <EventInfoPanel event={{
-          id:              event.id,
-          client_name:     event.client_name,
-          event_type:      event.event_type,
-          event_date:      event.event_date.toISOString(),
-          event_time:      event.event_time ?? null,
-          venue_name:      event.venue_name,
-          venue_address:   event.venue_address ?? null,
-          venue_has_sound: event.venue_has_sound,
-          venue_has_light: event.venue_has_light,
-          value:           parseFloat(event.value.toString()),
-          status:          event.status,
-        }} />
-
-        {attractions.length > 0 && (
-          <div>
-            <h3 className="font-semibold text-gray-900 mb-2">Atrações Contratadas</h3>
-            <div className="space-y-2">
-              {attractions.map(a => (
-                <div key={a.id} className="bg-gray-50 rounded-lg px-4 py-3 text-sm">
-                  <span className="font-medium text-gray-900">{a.name}</span>
-                  {a.observations && (
-                    <p className="text-gray-500 mt-0.5 whitespace-pre-wrap">{a.observations}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        <EventInfoPanel
+          event={{
+            id:              event.id,
+            client_name:     event.client_name,
+            event_type:      event.event_type,
+            event_date:      event.event_date.toISOString(),
+            event_time:      event.event_time ?? null,
+            venue_name:      event.venue_name,
+            venue_address:   event.venue_address ?? null,
+            venue_has_sound: event.venue_has_sound,
+            venue_has_light: event.venue_has_light,
+            value:           parseFloat(event.value.toString()),
+            status:          event.status,
+          }}
+          attractions={attractions.map(a => ({ id: a.id, name: a.name }))}
+        />
 
         <EventDetailClient eventoId={eventoId} bandMembers={bandMembers} />
 
