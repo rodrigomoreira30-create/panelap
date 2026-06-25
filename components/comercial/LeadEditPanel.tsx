@@ -71,6 +71,7 @@ export function LeadEditPanel({ lead, stages, sources, initialDocs, initialAttra
 
   // `displayed` tracks what's shown in view mode — updates immediately after save
   const [displayed, setDisplayed] = useState<LeadData>(lead)
+  const [displayedBudget, setDisplayedBudget] = useState<number | null>(lead.budget)
 
   const [form, setForm] = useState({
     client_name:     lead.client_name,
@@ -294,8 +295,8 @@ export function LeadEditPanel({ lead, stages, sources, initialDocs, initialAttra
                     className="mt-1 h-8 text-sm"
                     placeholder="0,00"
                   />
-                ) : displayed.budget != null ? (
-                  `R$ ${displayed.budget.toLocaleString('pt-BR')}`
+                ) : displayedBudget != null ? (
+                  `R$ ${displayedBudget.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                 ) : (
                   <span className="text-gray-400">Não informado</span>
                 )}
@@ -352,6 +353,10 @@ export function LeadEditPanel({ lead, stages, sources, initialDocs, initialAttra
             leadId={lead.id}
             initialAttractions={initialAttractions}
             initialDiscount={initialDiscount}
+            onTotalChange={total => {
+              setDisplayedBudget(total)
+              setForm(prev => ({ ...prev, budget: String(total) }))
+            }}
           />
         )}
 

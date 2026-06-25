@@ -26,6 +26,7 @@ interface LeadAttractionsProps {
   leadId: string
   initialAttractions: LeadAttractionItem[]
   initialDiscount: number
+  onTotalChange?: (total: number) => void
 }
 
 function parseBRValue(raw: string): number {
@@ -34,10 +35,18 @@ function parseBRValue(raw: string): number {
   return parseFloat(cleaned)
 }
 
-export function LeadAttractions({ leadId, initialAttractions, initialDiscount }: LeadAttractionsProps) {
+function fmt(n: number) {
+  return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+function computeTotal(attrItems: LeadAttractionItem[], disc: number) {
+  return Math.max(0, attrItems.reduce((s, i) => s + i.custom_value, 0) - disc)
+}
+
+export function LeadAttractions({ leadId, initialAttractions, initialDiscount, onTotalChange }: LeadAttractionsProps) {
   const [items, setItems] = useState<LeadAttractionItem[]>(initialAttractions)
   const [discount, setDiscount] = useState(initialDiscount)
-  const [discountInput, setDiscountInput] = useState(String(initialDiscount))
+  const [discountInput, setDiscountInput] = useState(initialDiscount > 0 ? fmt(initialDiscount) : '')
   const [catalog, setCatalog] = useState<CatalogAttraction[]>([])
   const [showAdd, setShowAdd] = useState(false)
   const [selectedId, setSelectedId] = useState('')
@@ -54,6 +63,16 @@ export function LeadAttractions({ leadId, initialAttractions, initialDiscount }:
       })
       .catch(() => {})
   }, [])
+
+  async function syncBudget(newItems: LeadAttractionItem[], disc: number) {
+    const newTotal = computeTotal(newItems, disc)
+    onTotalChange?.(newTotal)
+    fetch(`/api/leads/${leadId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ budget: newTotal }),
+    }).catch(() => {})
+  }
 
   function onCatalogSelect(id: string) {
     setSelectedId(id)
@@ -75,11 +94,14 @@ export function LeadAttractions({ leadId, initialAttractions, initialDiscount }:
     setAdding(false)
     if (res.ok) {
       const { data } = await res.json()
-      setItems(prev => [...prev, { ...data, custom_value: parseFloat(data.custom_value.toString()) }])
+      const newItem = { ...data, custom_value: parseFloat(data.custom_value.toString()) }
+      const newItems = [...items, newItem]
+      setItems(newItems)
       setShowAdd(false)
       setSelectedId('')
       setAddValue('')
       setAddObs('')
+      await syncBudget(newItems, discount)
     } else {
       const d = await res.json()
       setError(d.error ?? 'Erro ao adicionar.')
@@ -95,7 +117,9 @@ export function LeadAttractions({ leadId, initialAttractions, initialDiscount }:
       body: JSON.stringify({ custom_value: val }),
     })
     if (res.ok) {
-      setItems(prev => prev.map(x => x.id === item.id ? { ...x, custom_value: val } : x))
+      const newItems = items.map(x => x.id === item.id ? { ...x, custom_value: val } : x)
+      setItems(newItems)
+      await syncBudget(newItems, discount)
     }
   }
 
@@ -112,12 +136,17 @@ export function LeadAttractions({ leadId, initialAttractions, initialDiscount }:
 
   async function handleRemove(id: string) {
     const res = await fetch(`/api/leads/${leadId}/attractions/${id}`, { method: 'DELETE' })
-    if (res.ok) setItems(prev => prev.filter(x => x.id !== id))
+    if (res.ok) {
+      const newItems = items.filter(x => x.id !== id)
+      setItems(newItems)
+      await syncBudget(newItems, discount)
+    }
   }
 
   async function handleDiscountBlur() {
     const val = parseBRValue(discountInput)
     const safeVal = isNaN(val) || val < 0 ? 0 : val
+    setDiscountInput(safeVal > 0 ? fmt(safeVal) : '')
     if (safeVal === discount) return
     const res = await fetch(`/api/leads/${leadId}`, {
       method: 'PATCH',
@@ -126,16 +155,12 @@ export function LeadAttractions({ leadId, initialAttractions, initialDiscount }:
     })
     if (res.ok) {
       setDiscount(safeVal)
-      setDiscountInput(String(safeVal))
+      await syncBudget(items, safeVal)
     }
   }
 
   const subtotal = items.reduce((s, i) => s + i.custom_value, 0)
   const total = Math.max(0, subtotal - discount)
-
-  function fmt(n: number) {
-    return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-  }
 
   return (
     <div className="space-y-3 py-1">
@@ -172,7 +197,7 @@ export function LeadAttractions({ leadId, initialAttractions, initialDiscount }:
             value={addValue}
             onChange={e => setAddValue(e.target.value)}
             className="h-8 text-sm"
-            placeholder="Ex: 9800 ou 9.800,00"
+            placeholder="Ex: 9.800,00"
           />
           <Textarea
             value={addObs}
@@ -203,7 +228,7 @@ export function LeadAttractions({ leadId, initialAttractions, initialDiscount }:
       <div className="border-t pt-3 space-y-1.5">
         <div className="flex justify-between text-xs text-gray-500">
           <span>Subtotal</span>
-          <span>{fmt(subtotal)}</span>
+          <span>R$ {fmt(subtotal)}</span>
         </div>
         <div className="flex justify-between items-center text-xs text-gray-500">
           <span>Desconto</span>
@@ -211,14 +236,15 @@ export function LeadAttractions({ leadId, initialAttractions, initialDiscount }:
             type="text"
             value={discountInput}
             onChange={e => setDiscountInput(e.target.value)}
+            onFocus={() => { if (discount > 0) setDiscountInput(String(discount)) }}
             onBlur={handleDiscountBlur}
             className="h-7 w-28 text-right text-xs"
-            placeholder="0"
+            placeholder="0,00"
           />
         </div>
         <div className="flex justify-between items-center text-sm font-bold text-gray-900 pt-1 border-t">
           <span>Total da Proposta</span>
-          <span className="text-indigo-600">{fmt(total)}</span>
+          <span className="text-indigo-600">R$ {fmt(total)}</span>
         </div>
       </div>
     </div>
@@ -236,8 +262,9 @@ function AttractionRow({
   onObsBlur: (item: LeadAttractionItem, obs: string) => void
   onRemove: (id: string) => void
 }) {
-  const [value, setValue] = useState(String(item.custom_value))
+  const [value, setValue] = useState(fmt(item.custom_value))
   const [obs, setObs] = useState(item.observations ?? '')
+  const [focused, setFocused] = useState(false)
 
   return (
     <div className="border rounded-lg p-3 space-y-2 bg-white">
@@ -253,11 +280,21 @@ function AttractionRow({
         <span className="text-xs text-gray-500 shrink-0">Valor (R$)</span>
         <Input
           type="text"
-          value={value}
+          value={focused ? value.replace(/\./g, '').replace(',', '.').replace(/\.(\d{2})$/, ',$1').replace(/\B(?=(\d{3})+(?!\d))/g, '.') : value}
           onChange={e => setValue(e.target.value)}
-          onBlur={() => onValueBlur(item, value)}
+          onFocus={() => {
+            setFocused(true)
+            setValue(String(item.custom_value))
+          }}
+
+          onBlur={() => {
+            setFocused(false)
+            const parsed = parseFloat(value.replace(/\./g, '').replace(',', '.'))
+            if (!isNaN(parsed)) setValue(fmt(parsed))
+            onValueBlur(item, value)
+          }}
           className="h-7 text-sm flex-1"
-          placeholder="Ex: 9800"
+          placeholder="Ex: 9.800,00"
         />
       </div>
       <Textarea
