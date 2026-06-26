@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 
 const roleOptions = [
   { value: 'musician',   label: 'Músico' },
+  { value: 'singer',     label: 'Cantor(a)' },
   { value: 'producer',   label: 'Produtor' },
   { value: 'commercial', label: 'Comercial' },
   { value: 'admin',      label: 'Admin' },

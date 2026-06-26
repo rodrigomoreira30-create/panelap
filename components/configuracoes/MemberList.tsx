@@ -12,6 +12,7 @@ const roleLabels: Record<string, string> = {
   commercial: 'Comercial',
   producer:   'Produtor',
   musician:   'Músico',
+  singer:     'Cantor(a)',
 }
 
 type MemberItem = {
