@@ -58,15 +58,27 @@ export async function GET(request: Request) {
     where: { band_id: bandId, created_at: { gte: startDate } },
   })
 
-  // KPI: faturamento previsto (eventos contratados ou em andamento)
+  // KPI: faturamento — soma do total das atrações dos eventos contratados/em andamento
   const activeEvents = await prisma.event.findMany({
     where: { band_id: bandId, status: { in: [EventStatus.contracted, EventStatus.active] } },
-    select: { value: true },
+    include: {
+      lead: {
+        select: {
+          proposal_discount: true,
+          lead_attractions: { select: { custom_value: true } },
+        },
+      },
+    },
   })
-  const faturamentoPrevisto = activeEvents.reduce(
-    (sum, e) => sum + parseFloat(e.value.toString()),
-    0
-  )
+  const faturamentoPrevisto = activeEvents.reduce((sum, e) => {
+    if (!e.lead || e.lead.lead_attractions.length === 0) return sum
+    const subtotal = e.lead.lead_attractions.reduce(
+      (s, a) => s + parseFloat(a.custom_value.toString()),
+      0
+    )
+    const discount = parseFloat((e.lead.proposal_discount ?? 0).toString())
+    return sum + Math.max(0, subtotal - discount)
+  }, 0)
 
   // Leads por dia — todos os dias do intervalo, zeros incluídos
   const leadsInPeriod = await prisma.lead.findMany({

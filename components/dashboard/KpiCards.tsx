@@ -11,7 +11,7 @@ export function KpiCards({ kpi }: Props) {
       accent: 'bg-blue-500',
     },
     {
-      label: 'Faturamento previsto',
+      label: 'Faturamento',
       value: `R$ ${kpi.faturamentoPrevisto.toLocaleString('pt-BR', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
