@@ -44,9 +44,10 @@ interface Attraction {
 interface EventInfoPanelProps {
   event: EventInfo
   attractions?: Attraction[]
+  attractionsTotal?: number | null
 }
 
-export function EventInfoPanel({ event, attractions = [] }: EventInfoPanelProps) {
+export function EventInfoPanel({ event, attractions = [], attractionsTotal }: EventInfoPanelProps) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -61,7 +62,6 @@ export function EventInfoPanel({ event, attractions = [] }: EventInfoPanelProps)
     venue_address:   event.venue_address ?? '',
     venue_has_sound: event.venue_has_sound,
     venue_has_light: event.venue_has_light,
-    value:           String(event.value),
   })
 
   function set(key: string, value: string | boolean) {
@@ -78,7 +78,6 @@ export function EventInfoPanel({ event, attractions = [] }: EventInfoPanelProps)
       venue_address:   data.venue_address ?? '',
       venue_has_sound: data.venue_has_sound,
       venue_has_light: data.venue_has_light,
-      value:           String(data.value),
     })
     setError('')
     setEditing(false)
@@ -99,7 +98,6 @@ export function EventInfoPanel({ event, attractions = [] }: EventInfoPanelProps)
         venue_address:   form.venue_address || null,
         venue_has_sound: form.venue_has_sound,
         venue_has_light: form.venue_has_light,
-        value:           parseFloat(form.value) || 0,
       }),
     })
     setSaving(false)
@@ -114,7 +112,6 @@ export function EventInfoPanel({ event, attractions = [] }: EventInfoPanelProps)
         venue_address:   form.venue_address || null,
         venue_has_sound: form.venue_has_sound,
         venue_has_light: form.venue_has_light,
-        value:           parseFloat(form.value) || 0,
       }))
       setEditing(false)
     } else {
@@ -255,15 +252,12 @@ export function EventInfoPanel({ event, attractions = [] }: EventInfoPanelProps)
             <span>{data.event_time ?? '—'}</span>
           )}
         </div>
-        <div>
-          <span className="font-medium text-gray-700">Valor:</span>{' '}
-          {editing ? (
-            <Input type="number" value={form.value} onChange={e => set('value', e.target.value)}
-              className="mt-1 h-7 text-sm" />
-          ) : (
-            <span>R$ {Number(data.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-          )}
-        </div>
+        {attractionsTotal != null && (
+          <div>
+            <span className="font-medium text-gray-700">Valor da Proposta:</span>{' '}
+            <span>R$ {attractionsTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          </div>
+        )}
       </div>
 
       {error && <p className="text-red-500 text-xs">{error}</p>}

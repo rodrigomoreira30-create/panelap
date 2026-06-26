@@ -62,6 +62,9 @@ export default async function EventDetailPage({
   })
 
   const attractions = event.lead?.lead_attractions ?? []
+  const attractionsSubtotal = attractions.reduce((s, a) => s + parseFloat(a.custom_value.toString()), 0)
+  const discount = parseFloat((event.lead?.proposal_discount ?? 0).toString())
+  const attractionsTotal = attractions.length > 0 ? Math.max(0, attractionsSubtotal - discount) : null
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
@@ -81,6 +84,7 @@ export default async function EventDetailPage({
             status:          event.status,
           }}
           attractions={attractions.map(a => ({ id: a.id, name: a.name }))}
+          attractionsTotal={attractionsTotal}
         />
 
         <EventDetailClient eventoId={eventoId} bandMembers={bandMembers} />
