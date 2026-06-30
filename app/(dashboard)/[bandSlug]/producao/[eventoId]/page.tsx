@@ -5,6 +5,7 @@ import { redirect, notFound } from 'next/navigation'
 import { EventDetailClient } from '@/components/producao/EventDetailClient'
 import { EventAlignmentNotes } from '@/components/producao/EventAlignmentNotes'
 import { EventInfoPanel } from '@/components/producao/EventInfoPanel'
+import { EventDocuments } from '@/components/producao/EventDocuments'
 
 export default async function EventDetailPage({
   params,
@@ -30,6 +31,7 @@ export default async function EventDetailPage({
           orderBy: { id: 'asc' },
         },
         lead: { include: { lead_attractions: { orderBy: { created_at: 'asc' } } } },
+        documents: { orderBy: { created_at: 'desc' } },
       },
     }),
     prisma.user.findMany({
@@ -88,6 +90,16 @@ export default async function EventDetailPage({
         />
 
         <EventDetailClient eventoId={eventoId} bandMembers={bandMembers} />
+
+        <EventDocuments
+          eventId={eventoId}
+          initialDocs={event.documents.map(d => ({
+            id: d.id,
+            file_name: d.file_name,
+            file_url: d.file_url,
+            created_at: d.created_at.toISOString(),
+          }))}
+        />
 
         <EventAlignmentNotes eventId={eventoId} initialNotes={event.notes ?? null} />
       </div>
