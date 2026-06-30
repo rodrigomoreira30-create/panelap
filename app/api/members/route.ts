@@ -8,7 +8,7 @@ const createMemberSchema = z.object({
   name:     z.string().min(2, 'Nome obrigatório'),
   email:    z.string().email('Email inválido'),
   password: z.string().min(6, 'Senha mínima de 6 caracteres'),
-  role:     z.enum(['musician', 'producer', 'commercial', 'admin']),
+  role:     z.enum(['musician', 'singer', 'producer', 'commercial', 'admin']),
 })
 
 export async function POST(request: Request) {

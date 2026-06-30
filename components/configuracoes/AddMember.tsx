@@ -33,7 +33,8 @@ export function AddMember() {
     setLoading(false)
 
     if (!res.ok) {
-      setError(data.error ?? 'Erro ao cadastrar membro')
+      const msg = typeof data.error === 'string' ? data.error : 'Erro ao cadastrar membro'
+      setError(msg)
       return
     }
 
