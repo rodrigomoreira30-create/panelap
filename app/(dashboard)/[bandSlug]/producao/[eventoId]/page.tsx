@@ -6,6 +6,7 @@ import { EventDetailClient } from '@/components/producao/EventDetailClient'
 import { EventAlignmentNotes } from '@/components/producao/EventAlignmentNotes'
 import { EventInfoPanel } from '@/components/producao/EventInfoPanel'
 import { EventDocuments } from '@/components/producao/EventDocuments'
+import { EventAttractionsEditor } from '@/components/producao/EventAttractionsEditor'
 
 export default async function EventDetailPage({
   params,
@@ -88,6 +89,19 @@ export default async function EventDetailPage({
           attractions={attractions.map(a => ({ id: a.id, name: a.name }))}
           attractionsTotal={attractionsTotal}
         />
+
+        {event.lead && (
+          <EventAttractionsEditor
+            leadId={event.lead.id}
+            initialAttractions={attractions.map(a => ({
+              id: a.id,
+              name: a.name,
+              custom_value: parseFloat(a.custom_value.toString()),
+              observations: a.observations ?? null,
+            }))}
+            initialDiscount={discount}
+          />
+        )}
 
         <EventDetailClient eventoId={eventoId} bandMembers={bandMembers} />
 
