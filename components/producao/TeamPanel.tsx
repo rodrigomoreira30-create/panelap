@@ -51,7 +51,9 @@ export function TeamPanel({ eventId, musicians, bandMembers }: Props) {
   }
 
   const alreadyAdded = new Set(musicians.map(m => m.user_id))
+  const usedPositions = new Set(musicians.map(m => m.instrument).filter(Boolean))
   const available = bandMembers.filter(m => !alreadyAdded.has(m.id))
+  const availablePositions = POSITIONS.filter(p => !usedPositions.has(p))
 
   const addMutation = useMutation({
     mutationFn: async ({ userId, position }: { userId: string; position: string }) => {
@@ -158,7 +160,7 @@ export function TeamPanel({ eventId, musicians, bandMembers }: Props) {
               className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm"
             >
               <option value="">Selecionar posição...</option>
-              {POSITIONS.map(p => (
+              {availablePositions.map(p => (
                 <option key={p} value={p}>{p}</option>
               ))}
             </select>
