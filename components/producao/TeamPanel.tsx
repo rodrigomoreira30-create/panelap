@@ -5,6 +5,22 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { X, Link2, Check } from 'lucide-react'
 import type { EventData, EventMusician } from './EventDetailClient'
 
+const POSITIONS = [
+  'Cantor 1',
+  'Cantor 2',
+  'Cantor 3',
+  'Cantor 4',
+  'Guitarrista',
+  'Baixista',
+  'Baterista',
+  'Tecladista',
+  'Saxofonista',
+  'Sanfoneiro',
+  'Trompetista',
+  'Trombonista',
+  'Tecnico',
+]
+
 const statusConfig: Record<string, { label: string; className: string }> = {
   pending:   { label: 'Pendente',   className: 'bg-yellow-100 text-yellow-700' },
   confirmed: { label: 'Confirmado', className: 'bg-green-100 text-green-700' },
@@ -23,6 +39,7 @@ export function TeamPanel({ eventId, musicians, bandMembers }: Props) {
   const queryClient = useQueryClient()
   const queryKey = ['event', eventId]
   const [selectedUserId, setSelectedUserId] = useState('')
+  const [selectedPosition, setSelectedPosition] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
   function handleCopyLink(token: string, musicianId: string) {
@@ -37,16 +54,17 @@ export function TeamPanel({ eventId, musicians, bandMembers }: Props) {
   const available = bandMembers.filter(m => !alreadyAdded.has(m.id))
 
   const addMutation = useMutation({
-    mutationFn: async (userId: string) => {
+    mutationFn: async ({ userId, position }: { userId: string; position: string }) => {
       const res = await fetch('/api/event-musicians', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ event_id: eventId, user_id: userId }),
+        body: JSON.stringify({ event_id: eventId, user_id: userId, instrument: position || undefined }),
       })
       if (!res.ok) throw new Error('Falha ao adicionar músico')
     },
     onSuccess: () => {
       setSelectedUserId('')
+      setSelectedPosition('')
       queryClient.invalidateQueries({ queryKey })
     },
     onError: () => {
@@ -122,23 +140,35 @@ export function TeamPanel({ eventId, musicians, bandMembers }: Props) {
       </div>
 
       {available.length > 0 && (
-        <div className="flex gap-2">
-          <select
-            value={selectedUserId}
-            onChange={e => setSelectedUserId(e.target.value)}
-            className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm"
-          >
-            <option value="">Selecionar membro...</option>
-            {available.map(m => (
-              <option key={m.id} value={m.id}>{m.name}</option>
-            ))}
-          </select>
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <select
+              value={selectedUserId}
+              onChange={e => setSelectedUserId(e.target.value)}
+              className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm"
+            >
+              <option value="">Selecionar membro...</option>
+              {available.map(m => (
+                <option key={m.id} value={m.id}>{m.name}</option>
+              ))}
+            </select>
+            <select
+              value={selectedPosition}
+              onChange={e => setSelectedPosition(e.target.value)}
+              className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm"
+            >
+              <option value="">Selecionar posição...</option>
+              {POSITIONS.map(p => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+          </div>
           <button
-            onClick={() => { if (selectedUserId) addMutation.mutate(selectedUserId) }}
+            onClick={() => { if (selectedUserId) addMutation.mutate({ userId: selectedUserId, position: selectedPosition }) }}
             disabled={!selectedUserId || addMutation.isPending}
-            className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+            className="w-full px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
           >
-            {addMutation.isPending ? 'Adicionando...' : 'Adicionar'}
+            {addMutation.isPending ? 'Adicionando...' : 'Adicionar à equipe'}
           </button>
         </div>
       )}
