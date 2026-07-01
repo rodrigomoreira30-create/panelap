@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getSessionUser } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { sendEventInviteEmail } from '@/lib/email'
 
 const addMusicianSchema = z.object({
   event_id:   z.string().cuid(),
@@ -31,6 +32,7 @@ export async function POST(request: Request) {
   // Verify user belongs to band
   const musician = await prisma.user.findFirst({
     where: { id: parsed.data.user_id, band_id: sessionUser.band_id },
+    select: { id: true, name: true, email: true, schedule_token: true },
   })
   if (!musician) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
@@ -47,6 +49,15 @@ export async function POST(request: Request) {
     update: { instrument: parsed.data.instrument },
     include: { user: { select: { id: true, name: true, avatar_url: true } } },
   })
+
+  // Enviar email de notificação (sem bloquear a resposta em caso de falha)
+  sendEventInviteEmail({
+    to:             musician.email,
+    musicianName:   musician.name,
+    eventName:      event.client_name,
+    eventDate:      event.event_date,
+    scheduleToken:  musician.schedule_token,
+  }).catch(err => console.error('[email] Falha ao enviar convite:', err))
 
   return NextResponse.json({ data: eventMusician }, { status: 201 })
 }
