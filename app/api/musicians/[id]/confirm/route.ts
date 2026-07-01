@@ -11,7 +11,7 @@ export async function GET(
 
   if (action !== 'confirm' && action !== 'decline') {
     return new Response('<html><body><h1>Link inválido</h1></body></html>', {
-      headers: { 'Content-Type': 'text/html' },
+      headers: { 'Content-Type': 'text/html; charset=utf-8' },
     })
   }
 
@@ -22,14 +22,14 @@ export async function GET(
 
   if (!em) {
     return new Response('<html><body><h1>Convite não encontrado</h1></body></html>', {
-      headers: { 'Content-Type': 'text/html' },
+      headers: { 'Content-Type': 'text/html; charset=utf-8' },
     })
   }
 
   if (em.status !== 'pending') {
     return new Response(
       `<html><body><h1>Você já respondeu: ${em.status === 'confirmed' ? '✅ Confirmado' : '❌ Recusado'}</h1></body></html>`,
-      { headers: { 'Content-Type': 'text/html' } }
+      { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
     )
   }
 
@@ -49,7 +49,7 @@ export async function GET(
 
   return new Response(
     `<html><body style="font-family:sans-serif;text-align:center;padding:40px"><h1>${message}</h1></body></html>`,
-    { headers: { 'Content-Type': 'text/html' } }
+    { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
   )
 }
 
