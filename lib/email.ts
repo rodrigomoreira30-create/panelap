@@ -1,9 +1,12 @@
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
-
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://bandaallmusic.com.br'
 const FROM = 'Panel Eventos <onboarding@resend.dev>'
+
+function getResend() {
+  if (!process.env.RESEND_API_KEY) throw new Error('RESEND_API_KEY não configurada')
+  return new Resend(process.env.RESEND_API_KEY)
+}
 
 export async function sendEventInviteEmail({
   to,
@@ -26,7 +29,7 @@ export async function sendEventInviteEmail({
     year: 'numeric',
   })
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to,
     subject: `Novo evento na sua agenda — ${eventName}`,
