@@ -68,8 +68,8 @@ export function LeadForm({ sources, onSuccess, onCancel }: LeadFormProps) {
           <Input value={form.client_name} onChange={e => set('client_name', e.target.value)} required />
         </div>
         <div>
-          <Label>Telefone / WhatsApp *</Label>
-          <Input value={form.phone} onChange={e => set('phone', e.target.value)} required />
+          <Label>Telefone / WhatsApp</Label>
+          <Input value={form.phone} onChange={e => set('phone', e.target.value)} />
         </div>
         <div>
           <Label>Tipo de evento *</Label>

@@ -4,7 +4,7 @@ const eventTypes = ['wedding', 'party', 'show', 'corporate', 'other'] as const
 
 export const leadCreateSchema = z.object({
   client_name:     z.string().min(2, 'Nome obrigatório'),
-  phone:           z.string().min(10, 'Telefone inválido'),
+  phone:           z.string().optional().default(''),
   event_type:      z.enum(eventTypes),
   source:          z.string().min(1, 'Fonte obrigatória'),
   event_date:      z.string().min(1).optional(),
