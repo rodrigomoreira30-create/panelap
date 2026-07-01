@@ -21,6 +21,22 @@ const POSITIONS = [
   'Tecnico',
 ]
 
+const POSITION_ICONS: Record<string, string> = {
+  'Cantor 1':    '🎤',
+  'Cantor 2':    '🎤',
+  'Cantor 3':    '🎤',
+  'Cantor 4':    '🎤',
+  'Guitarrista': '🎸',
+  'Baixista':    '🎸',
+  'Baterista':   '🥁',
+  'Tecladista':  '🎹',
+  'Saxofonista': '🎷',
+  'Sanfoneiro':  '🪗',
+  'Trompetista': '🎺',
+  'Trombonista': '🎺',
+  'Tecnico':     '🎛️',
+}
+
 const statusConfig: Record<string, { label: string; className: string }> = {
   pending:   { label: 'Pendente',   className: 'bg-yellow-100 text-yellow-700' },
   confirmed: { label: 'Confirmado', className: 'bg-green-100 text-green-700' },
@@ -111,7 +127,12 @@ export function TeamPanel({ eventId, musicians, bandMembers }: Props) {
               </div>
               <div className="flex-1">
                 <p className="text-sm font-medium">{em.user.name}</p>
-                {em.instrument && <p className="text-xs text-gray-400">{em.instrument}</p>}
+                {em.instrument && (
+                  <p className="text-xs text-gray-400">
+                    {POSITION_ICONS[em.instrument] && <span className="mr-1">{POSITION_ICONS[em.instrument]}</span>}
+                    {em.instrument}
+                  </p>
+                )}
               </div>
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cfg.className}`}>
                 {cfg.label}
@@ -161,7 +182,7 @@ export function TeamPanel({ eventId, musicians, bandMembers }: Props) {
             >
               <option value="">Selecionar posição...</option>
               {availablePositions.map(p => (
-                <option key={p} value={p}>{p}</option>
+                <option key={p} value={p}>{POSITION_ICONS[p]} {p}</option>
               ))}
             </select>
           </div>
