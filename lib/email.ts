@@ -3,7 +3,7 @@ import { Resend } from 'resend'
 const resend = new Resend(process.env.RESEND_API_KEY)
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://bandaallmusic.com.br'
-const FROM = 'Panel Eventos <noreply@bandaallmusic.com.br>'
+const FROM = 'Panel Eventos <onboarding@resend.dev>'
 
 export async function sendEventInviteEmail({
   to,
