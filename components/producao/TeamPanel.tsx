@@ -19,6 +19,8 @@ const POSITIONS = [
   'Trompetista',
   'Trombonista',
   'Tecnico',
+  'Equipe de Som',
+  'DJ',
 ]
 
 const POSITION_ICONS: Record<string, string> = {
@@ -34,7 +36,9 @@ const POSITION_ICONS: Record<string, string> = {
   'Sanfoneiro':  '🪗',
   'Trompetista': '🎺',
   'Trombonista': '🎺',
-  'Tecnico':     '🎛️',
+  'Tecnico':       '🎛️',
+  'Equipe de Som': '🔊',
+  'DJ':            '🎧',
 }
 
 const statusConfig: Record<string, { label: string; className: string }> = {
