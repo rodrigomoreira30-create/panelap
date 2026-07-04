@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  LayoutDashboard, Users, FileText, Cog, Calendar, FolderOpen, Settings,
+  LayoutDashboard, Users, FileText, Cog, Calendar, FolderOpen, Settings, DollarSign,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useBand } from './BandProvider'
@@ -15,6 +15,7 @@ const navItems = [
   { href: '/producao',   label: 'Produção',    icon: Cog },
   { href: '/agenda',     label: 'Agenda',      icon: Calendar },
   { href: '/documentos', label: 'Documentos',  icon: FolderOpen },
+  { href: '/financas',   label: 'Finanças',    icon: DollarSign },
 ]
 
 export function Sidebar() {
