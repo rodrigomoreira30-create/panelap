@@ -329,8 +329,7 @@ model EventFinance {
   event Event?            @relation(fields: [event_id], references: [id], onDelete: SetNull)
   items EventFinanceItem[]
 
-  @@index([band_id])
-  @@index([event_id])
+  @@index([band_id, event_date])
 }
 
 model EventFinanceItem {
