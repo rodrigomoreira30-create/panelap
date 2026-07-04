@@ -81,6 +81,7 @@ model Band {
   contract_templates ContractTemplate[]
   documents          Document[]
   attractions        Attraction[]
+  event_finances     EventFinance[]
 }
 
 model User {
@@ -162,6 +163,7 @@ model Event {
   checklists      Checklist[]
   event_musicians EventMusician[]
   documents       Document[]
+  finance         EventFinance?
 
   @@index([band_id])
 }
@@ -307,4 +309,41 @@ model LeadAttraction {
 
   @@index([lead_id])
   @@index([attraction_id])
+}
+
+model EventFinance {
+  id               String   @id @default(cuid())
+  band_id          String
+  event_id         String?  @unique
+  name             String
+  client           String?
+  product          String?
+  event_date       DateTime
+  expected_revenue Decimal  @default(0)
+  received_amount  Decimal  @default(0)
+  notes            String?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  band  Band              @relation(fields: [band_id], references: [id], onDelete: Cascade)
+  event Event?            @relation(fields: [event_id], references: [id], onDelete: SetNull)
+  items EventFinanceItem[]
+
+  @@index([band_id])
+  @@index([event_id])
+}
+
+model EventFinanceItem {
+  id         String   @id @default(cuid())
+  finance_id String
+  category   String
+  label      String
+  amount     Decimal  @default(0)
+  paid       Boolean  @default(false)
+  notes      String?
+  created_at DateTime @default(now())
+
+  finance EventFinance @relation(fields: [finance_id], references: [id], onDelete: Cascade)
+
+  @@index([finance_id])
 }
