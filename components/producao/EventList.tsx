@@ -88,7 +88,10 @@ export function EventList({ events: initialEvents, bandSlug }: Props) {
             >
               <p className="font-medium text-gray-900">{event.client_name}</p>
               <p className="text-sm text-gray-500">
-                {format(new Date(event.event_date), "dd 'de' MMMM yyyy", { locale: ptBR })}
+                {(() => {
+                  const [y, m, d] = String(event.event_date).slice(0, 10).split('-').map(Number)
+                  return format(new Date(y, m - 1, d), "dd 'de' MMMM yyyy", { locale: ptBR })
+                })()}
                 {event.venue_name && ` — ${event.venue_name}`}
               </p>
               <p className="text-xs text-gray-400 mt-0.5">
