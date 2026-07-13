@@ -89,7 +89,10 @@ export function EventList({ events: initialEvents, bandSlug }: Props) {
               <p className="font-medium text-gray-900">{event.client_name}</p>
               <p className="text-sm text-gray-500">
                 {(() => {
-                  const [y, m, d] = String(event.event_date).slice(0, 10).split('-').map(Number)
+                  const iso = event.event_date instanceof Date
+                    ? event.event_date.toISOString()
+                    : String(event.event_date)
+                  const [y, m, d] = iso.slice(0, 10).split('-').map(Number)
                   return format(new Date(y, m - 1, d), "dd 'de' MMMM yyyy", { locale: ptBR })
                 })()}
                 {event.venue_name && ` — ${event.venue_name}`}
