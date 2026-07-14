@@ -96,7 +96,8 @@ export function FinanceTable({ finances, onFinanceUpdated, onFinanceDeleted }: F
               Categoria
             </th>
             {finances.map(f => {
-              const d = new Date(f.event_date)
+              const [fy, fm, fd] = f.event_date.slice(0, 10).split('-').map(Number)
+              const d = new Date(fy, fm - 1, fd)
               return (
                 <th key={f.id} className="px-3 py-3 text-center min-w-[150px]">
                   <div className="flex flex-col items-center gap-0.5">
