@@ -31,7 +31,6 @@ export async function GET(request: Request) {
     const events = await prisma.event.findMany({
       where: {
         band_id: sessionUser.band_id,
-        ...statusFilter,
         ...dateFilter,
         finance: null,
       },

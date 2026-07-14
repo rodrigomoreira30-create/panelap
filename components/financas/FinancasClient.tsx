@@ -37,12 +37,20 @@ export function FinancasClient({
 
   const loadMonth = useCallback(async (m: number, y: number) => {
     setLoading(true)
-    const res = await fetch(`/api/financas?month=${m}&year=${y}`)
-    if (res.ok) {
-      const data = await res.json()
+    const [financesRes, eventsRes] = await Promise.all([
+      fetch(`/api/financas?month=${m}&year=${y}`),
+      fetch(`/api/events?noFinance=true&month=${m}&year=${y}`),
+    ])
+    if (financesRes.ok) {
+      const data = await financesRes.json()
       setFinances(data.data ?? [])
     }
-    setAvailableEvents([])
+    if (eventsRes.ok) {
+      const data = await eventsRes.json()
+      setAvailableEvents(data.data ?? [])
+    } else {
+      setAvailableEvents([])
+    }
     setLoading(false)
   }, [])
 
