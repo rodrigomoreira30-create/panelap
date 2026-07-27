@@ -55,7 +55,7 @@ export default async function MusicianSchedulePage({
   type EventMusician = typeof musician.event_musicians[number]
   const monthGroups: { key: string; label: string; items: EventMusician[] }[] = []
   for (const em of musician.event_musicians) {
-    const [y, m] = em.event.event_date.toString().slice(0, 7).split('-').map(Number)
+    const [y, m] = em.event.event_date.toISOString().slice(0, 7).split('-').map(Number)
     const key = `${y}-${m}`
     const label = format(new Date(y, m - 1, 1), 'MMMM yyyy', { locale: ptBR }).toUpperCase()
     const last = monthGroups[monthGroups.length - 1]
