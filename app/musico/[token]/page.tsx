@@ -51,6 +51,21 @@ export default async function MusicianSchedulePage({
 
   if (!musician) notFound()
 
+  // Agrupar eventos por mês
+  type EventMusician = typeof musician.event_musicians[number]
+  const monthGroups: { key: string; label: string; items: EventMusician[] }[] = []
+  for (const em of musician.event_musicians) {
+    const [y, m] = em.event.event_date.toString().slice(0, 7).split('-').map(Number)
+    const key = `${y}-${m}`
+    const label = format(new Date(y, m - 1, 1), 'MMMM yyyy', { locale: ptBR }).toUpperCase()
+    const last = monthGroups[monthGroups.length - 1]
+    if (last?.key === key) {
+      last.items.push(em)
+    } else {
+      monthGroups.push({ key, label, items: [em] })
+    }
+  }
+
   return (
     <main className="min-h-screen bg-gray-50">
       <div className="max-w-lg mx-auto px-4 py-8">
@@ -77,56 +92,68 @@ export default async function MusicianSchedulePage({
             <p>Nenhum show agendado por enquanto.</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {musician.event_musicians.map(em => {
-              const cfg = statusConfig[em.status] ?? statusConfig.pending
-              const eventDate = format(
-                new Date(em.event.event_date),
-                "EEEE, d 'de' MMMM yyyy",
-                { locale: ptBR }
-              )
-              return (
-                <div key={em.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-                  <div className="flex items-start justify-between gap-2 mb-3">
-                    <div>
-                      <p className="font-semibold text-gray-900">{em.event.client_name}</p>
-                      <p className="text-sm text-gray-500">
-                        {eventTypeLabels[em.event.event_type] ?? em.event.event_type}
-                      </p>
-                    </div>
-                    <span className={`text-xs px-2 py-1 rounded-full font-medium shrink-0 ${cfg.className}`}>
-                      {cfg.label}
-                    </span>
-                  </div>
-                  <div className="space-y-1 text-sm text-gray-600">
-                    <p className="flex items-center gap-1.5">
-                      <Calendar size={14} className="text-gray-400 shrink-0" />
-                      {eventDate}{em.event.event_time ? ` às ${em.event.event_time}` : ''}
-                    </p>
-                    <p className="flex items-center gap-1.5">
-                      <MapPin size={14} className="text-gray-400 shrink-0" />
-                      {em.event.venue_name ?? ''}{em.event.venue_address ? ` — ${em.event.venue_address}` : ''}
-                    </p>
-                  </div>
-                  {em.status === 'pending' && (
-                    <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
-                      <a
-                        href={`/api/musicians/${em.id}/confirm?action=confirm`}
-                        className="flex-1 text-center py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
-                      >
-                        ✓ Confirmar presença
-                      </a>
-                      <a
-                        href={`/api/musicians/${em.id}/confirm?action=decline`}
-                        className="flex-1 text-center py-2 text-sm bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors font-medium border border-red-200"
-                      >
-                        ✗ Recusar
-                      </a>
-                    </div>
-                  )}
+          <div className="space-y-8">
+            {monthGroups.map(group => (
+              <div key={group.key}>
+                <div className="flex items-center gap-3 mb-4">
+                  <h2 className="text-sm font-bold text-gray-400 uppercase tracking-widest">
+                    {group.label}
+                  </h2>
+                  <div className="flex-1 h-px bg-gray-200" />
                 </div>
-              )
-            })}
+                <div className="space-y-4">
+                  {group.items.map(em => {
+                    const cfg = statusConfig[em.status] ?? statusConfig.pending
+                    const eventDate = format(
+                      new Date(em.event.event_date),
+                      "EEEE, d 'de' MMMM yyyy",
+                      { locale: ptBR }
+                    )
+                    return (
+                      <div key={em.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+                        <div className="flex items-start justify-between gap-2 mb-3">
+                          <div>
+                            <p className="font-semibold text-gray-900">{em.event.client_name}</p>
+                            <p className="text-sm text-gray-500">
+                              {eventTypeLabels[em.event.event_type] ?? em.event.event_type}
+                            </p>
+                          </div>
+                          <span className={`text-xs px-2 py-1 rounded-full font-medium shrink-0 ${cfg.className}`}>
+                            {cfg.label}
+                          </span>
+                        </div>
+                        <div className="space-y-1 text-sm text-gray-600">
+                          <p className="flex items-center gap-1.5">
+                            <Calendar size={14} className="text-gray-400 shrink-0" />
+                            {eventDate}{em.event.event_time ? ` às ${em.event.event_time}` : ''}
+                          </p>
+                          <p className="flex items-center gap-1.5">
+                            <MapPin size={14} className="text-gray-400 shrink-0" />
+                            {em.event.venue_name ?? ''}{em.event.venue_address ? ` — ${em.event.venue_address}` : ''}
+                          </p>
+                        </div>
+                        {em.status === 'pending' && (
+                          <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
+                            <a
+                              href={`/api/musicians/${em.id}/confirm?action=confirm`}
+                              className="flex-1 text-center py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                            >
+                              ✓ Confirmar presença
+                            </a>
+                            <a
+                              href={`/api/musicians/${em.id}/confirm?action=decline`}
+                              className="flex-1 text-center py-2 text-sm bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors font-medium border border-red-200"
+                            >
+                              ✗ Recusar
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
