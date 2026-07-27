@@ -21,6 +21,9 @@ const POSITIONS = [
   'Tecnico',
   'Equipe de Som',
   'DJ',
+  'Time SB',
+  'Time AllMusic',
+  'Time Beats',
 ]
 
 const POSITION_ICONS: Record<string, string> = {
@@ -39,6 +42,9 @@ const POSITION_ICONS: Record<string, string> = {
   'Tecnico':       '🎛️',
   'Equipe de Som': '🔊',
   'DJ':            '🎧',
+  'Time SB':       '🎵',
+  'Time AllMusic': '🎵',
+  'Time Beats':    '🎵',
 }
 
 const statusConfig: Record<string, { label: string; className: string }> = {
