@@ -46,13 +46,15 @@ interface EventInfoPanelProps {
   attractions?: Attraction[]
   attractionsTotal?: number | null
   assessor?: string | null
+  leadId?: string | null
 }
 
-export function EventInfoPanel({ event, attractions = [], attractionsTotal, assessor }: EventInfoPanelProps) {
+export function EventInfoPanel({ event, attractions = [], attractionsTotal, assessor: initialAssessor, leadId }: EventInfoPanelProps) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [data, setData] = useState<EventInfo>(event)
+  const [assessorDisplay, setAssessorDisplay] = useState(initialAssessor ?? '')
 
   const [form, setForm] = useState({
     client_name:     event.client_name,
@@ -63,6 +65,7 @@ export function EventInfoPanel({ event, attractions = [], attractionsTotal, asse
     venue_address:   event.venue_address ?? '',
     venue_has_sound: event.venue_has_sound,
     venue_has_light: event.venue_has_light,
+    assessor:        initialAssessor ?? '',
   })
 
   function set(key: string, value: string | boolean) {
@@ -79,6 +82,7 @@ export function EventInfoPanel({ event, attractions = [], attractionsTotal, asse
       venue_address:   data.venue_address ?? '',
       venue_has_sound: data.venue_has_sound,
       venue_has_light: data.venue_has_light,
+      assessor:        assessorDisplay,
     })
     setError('')
     setEditing(false)
@@ -87,20 +91,29 @@ export function EventInfoPanel({ event, attractions = [], attractionsTotal, asse
   async function handleSave() {
     setSaving(true)
     setError('')
-    const res = await fetch(`/api/events/${event.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        client_name:     form.client_name,
-        event_type:      form.event_type,
-        event_date:      form.event_date,
-        event_time:      form.event_time || null,
-        venue_name:      form.venue_name,
-        venue_address:   form.venue_address || null,
-        venue_has_sound: form.venue_has_sound,
-        venue_has_light: form.venue_has_light,
+    const [res] = await Promise.all([
+      fetch(`/api/events/${event.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_name:     form.client_name,
+          event_type:      form.event_type,
+          event_date:      form.event_date,
+          event_time:      form.event_time || null,
+          venue_name:      form.venue_name,
+          venue_address:   form.venue_address || null,
+          venue_has_sound: form.venue_has_sound,
+          venue_has_light: form.venue_has_light,
+        }),
       }),
-    })
+      leadId
+        ? fetch(`/api/leads/${leadId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ assessor: form.assessor || null }),
+          })
+        : Promise.resolve(null),
+    ])
     setSaving(false)
     if (res.ok) {
       setData(prev => ({
@@ -114,6 +127,7 @@ export function EventInfoPanel({ event, attractions = [], attractionsTotal, asse
         venue_has_sound: form.venue_has_sound,
         venue_has_light: form.venue_has_light,
       }))
+      setAssessorDisplay(form.assessor)
       setEditing(false)
     } else {
       setError('Erro ao salvar. Tente novamente.')
@@ -259,12 +273,15 @@ export function EventInfoPanel({ event, attractions = [], attractionsTotal, asse
             <span>R$ {attractionsTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </div>
         )}
-        {assessor && (
-          <div>
-            <span className="font-medium text-gray-700">Assessor(a):</span>{' '}
-            <span>{assessor}</span>
-          </div>
-        )}
+        <div>
+          <span className="font-medium text-gray-700">Assessor(a):</span>{' '}
+          {editing ? (
+            <Input value={form.assessor} onChange={e => set('assessor', e.target.value)}
+              className="mt-1 h-7 text-sm" placeholder="Nome da assessoria" />
+          ) : (
+            <span>{assessorDisplay || '—'}</span>
+          )}
+        </div>
       </div>
 
       {error && <p className="text-red-500 text-xs">{error}</p>}
