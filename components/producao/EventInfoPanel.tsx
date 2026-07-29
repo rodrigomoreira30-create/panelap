@@ -45,9 +45,10 @@ interface EventInfoPanelProps {
   event: EventInfo
   attractions?: Attraction[]
   attractionsTotal?: number | null
+  assessor?: string | null
 }
 
-export function EventInfoPanel({ event, attractions = [], attractionsTotal }: EventInfoPanelProps) {
+export function EventInfoPanel({ event, attractions = [], attractionsTotal, assessor }: EventInfoPanelProps) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -256,6 +257,12 @@ export function EventInfoPanel({ event, attractions = [], attractionsTotal }: Ev
           <div>
             <span className="font-medium text-gray-700">Valor da Proposta:</span>{' '}
             <span>R$ {attractionsTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          </div>
+        )}
+        {assessor && (
+          <div>
+            <span className="font-medium text-gray-700">Assessor(a):</span>{' '}
+            <span>{assessor}</span>
           </div>
         )}
       </div>
