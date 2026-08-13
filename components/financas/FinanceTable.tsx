@@ -174,7 +174,10 @@ export function FinanceTable({ finances, onFinanceUpdated, onFinanceDeleted }: F
                 const item = f.items.find(i => i.category === def.category)
                 if (!item) return <td key={f.id} className="px-3 py-2 text-right text-gray-300">—</td>
                 return (
-                  <FinanceCell key={f.id} value={item.amount} colorClass={item.amount > 0 ? 'text-red-600' : 'text-gray-400'}
+                  <FinanceCell key={f.id} value={item.amount}
+                    colorClass={item.amount > 0 ? 'text-red-600' : 'text-gray-400'}
+                    paid={item.paid}
+                    onPaidToggle={() => patchItem(f.id, item.id, { paid: !item.paid })}
                     onSave={v => patchItem(f.id, item.id, { amount: v })} />
                 )
               })}
@@ -213,6 +216,8 @@ export function FinanceTable({ finances, onFinanceUpdated, onFinanceDeleted }: F
                         if (fCol.id !== f.id) return <td key={fCol.id} className="px-3 py-2" />
                         return (
                           <FinanceCell key={fCol.id} value={item.amount} colorClass="text-red-600"
+                            paid={item.paid}
+                            onPaidToggle={() => patchItem(f.id, item.id, { paid: !item.paid })}
                             onSave={v => patchItem(f.id, item.id, { amount: v })} />
                         )
                       })}
