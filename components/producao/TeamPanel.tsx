@@ -90,13 +90,29 @@ export function TeamPanel({ eventId, musicians, bandMembers }: Props) {
       })
       if (!res.ok) throw new Error('Falha ao adicionar músico')
     },
-    onSuccess: () => {
+    onMutate: async ({ userId, position }) => {
+      await queryClient.cancelQueries({ queryKey })
+      const previous = queryClient.getQueryData(queryKey)
+      const member = bandMembers.find(m => m.id === userId)
+      const tempMusician: EventMusician = {
+        id: `temp-${Date.now()}`,
+        user_id: userId,
+        instrument: position || null,
+        status: 'pending',
+        user: { id: userId, name: member?.name ?? '', avatar_url: null, schedule_token: '' },
+      }
+      queryClient.setQueryData<EventData>(queryKey, old =>
+        old ? { ...old, event_musicians: [...old.event_musicians, tempMusician] } : old
+      )
       setSelectedUserId('')
       setSelectedPosition('')
-      queryClient.invalidateQueries({ queryKey })
+      return { previous }
     },
-    onError: () => {
-      console.error('Falha ao adicionar músico ao evento')
+    onError: (_err, _vars, context) => {
+      queryClient.setQueryData(queryKey, context?.previous)
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey })
     },
   })
 
