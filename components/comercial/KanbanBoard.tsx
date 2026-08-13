@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useToast } from '@/hooks/use-toast'
@@ -9,7 +9,7 @@ import {
 } from '@dnd-kit/core'
 import { KanbanColumn } from './KanbanColumn'
 import { LeadCard } from './LeadCard'
-import { Search, X } from 'lucide-react'
+import { Search, X, SlidersHorizontal, Check } from 'lucide-react'
 
 const DEFAULT_STAGES = [
   { key: 'new_lead',       label: 'Novo Lead' },
@@ -81,6 +81,28 @@ export function KanbanBoard({ bandSlug, pipelineStages, leadSources }: KanbanBoa
   const sources = leadSources ?? DEFAULT_SOURCES
   const stageKeys = stages.map(s => s.key)
   const queryKey = ['leads', bandSlug]
+
+  const [visibleStageKeys, setVisibleStageKeys] = useState<string[]>(stageKeys)
+  const [stageFilterOpen, setStageFilterOpen] = useState(false)
+  const stageFilterRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (stageFilterRef.current && !stageFilterRef.current.contains(e.target as Node)) {
+        setStageFilterOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  function toggleStage(key: string) {
+    setVisibleStageKeys(prev =>
+      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+    )
+  }
+
+  const visibleStages = stages.filter(s => visibleStageKeys.includes(s.key))
 
   const { data: leads = [], isError, refetch } = useQuery({
     queryKey,
@@ -196,24 +218,79 @@ export function KanbanBoard({ bandSlug, pipelineStages, leadSources }: KanbanBoa
     <div className="flex flex-col gap-3">
       {/* Barra de busca e filtros */}
       <div className="flex flex-col gap-2">
-        {/* Busca */}
-        <div className="relative">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar por nome ou telefone..."
-            className="w-full pl-9 pr-9 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-          />
-          {search && (
+        {/* Busca + filtro de etapas */}
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Buscar por nome ou telefone..."
+              className="w-full pl-9 pr-9 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          {/* Filtro de etapas */}
+          <div className="relative" ref={stageFilterRef}>
             <button
-              onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              onClick={() => setStageFilterOpen(prev => !prev)}
+              className={`flex items-center gap-2 px-3 py-2 text-sm border rounded-lg transition-colors whitespace-nowrap ${
+                visibleStageKeys.length < stages.length
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400 hover:text-blue-600'
+              }`}
             >
-              <X size={14} />
+              <SlidersHorizontal size={14} />
+              Etapas
+              {visibleStageKeys.length < stages.length && (
+                <span className="bg-white text-blue-600 rounded-full text-xs px-1.5 font-bold leading-none py-0.5">
+                  {visibleStageKeys.length}
+                </span>
+              )}
             </button>
-          )}
+
+            {stageFilterOpen && (
+              <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-xl shadow-lg p-2 min-w-[200px]">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-2 py-1.5">
+                  Etapas visíveis
+                </p>
+                {stages.map(stage => {
+                  const active = visibleStageKeys.includes(stage.key)
+                  return (
+                    <button
+                      key={stage.key}
+                      onClick={() => toggleStage(stage.key)}
+                      className="flex items-center gap-3 w-full px-2 py-2 rounded-lg text-sm text-left hover:bg-gray-50 transition-colors"
+                    >
+                      <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                        active ? 'bg-blue-600 border-blue-600' : 'border-gray-300'
+                      }`}>
+                        {active && <Check size={11} className="text-white" strokeWidth={3} />}
+                      </span>
+                      <span className={active ? 'text-gray-900' : 'text-gray-400'}>{stage.label}</span>
+                    </button>
+                  )
+                })}
+                {visibleStageKeys.length < stages.length && (
+                  <button
+                    onClick={() => setVisibleStageKeys(stageKeys)}
+                    className="w-full mt-1 pt-2 border-t border-gray-100 text-xs text-blue-600 hover:text-blue-700 text-center py-1"
+                  >
+                    Mostrar todas
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Tags */}
@@ -262,7 +339,7 @@ export function KanbanBoard({ bandSlug, pipelineStages, leadSources }: KanbanBoa
         onDragEnd={handleDragEnd}
       >
         <div className="flex gap-3 overflow-x-auto pb-4">
-          {stages.map(stage => (
+          {visibleStages.map(stage => (
             <KanbanColumn
               key={stage.key}
               status={stage.key}
