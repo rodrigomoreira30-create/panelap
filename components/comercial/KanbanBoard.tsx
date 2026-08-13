@@ -192,10 +192,23 @@ export function KanbanBoard({ bandSlug, pipelineStages, leadSources }: KanbanBoa
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
     setActiveId(null)
-    if (!over || active.id === over.id) return
+    if (!over) return
     const leadId = active.id as string
-    const newStatus = over.id as string
-    if (!stageKeys.includes(newStatus)) return
+    const overId = over.id as string
+
+    // over.id pode ser o ID de uma coluna (droppable) ou de outro card (sortable)
+    let newStatus: string
+    if (stageKeys.includes(overId)) {
+      newStatus = overId
+    } else {
+      const targetLead = leads.find(l => l.id === overId)
+      if (!targetLead) return
+      newStatus = targetLead.status
+    }
+
+    const currentLead = leads.find(l => l.id === leadId)
+    if (!currentLead || currentLead.status === newStatus) return
+
     moveMutation.mutate({ leadId, newStatus })
   }
 
