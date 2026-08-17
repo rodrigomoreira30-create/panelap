@@ -1,38 +1,84 @@
 'use client'
 
-import { useState, useRef } from 'react'
-import { Check, Loader2 } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { useEditor, EditorContent } from '@tiptap/react'
+import StarterKit from '@tiptap/starter-kit'
+import { Check, Loader2, Bold, Italic, Strikethrough, List, ListOrdered } from 'lucide-react'
 
 interface EventAlignmentNotesProps {
   eventId: string
   initialNotes: string | null
 }
 
+function ToolbarButton({
+  onClick,
+  active,
+  title,
+  children,
+}: {
+  onClick: () => void
+  active?: boolean
+  title: string
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onMouseDown={e => { e.preventDefault(); onClick() }}
+      title={title}
+      className={`p-1.5 rounded transition-colors ${
+        active
+          ? 'bg-gray-200 text-gray-900'
+          : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
+      }`}
+    >
+      {children}
+    </button>
+  )
+}
+
 export function EventAlignmentNotes({ eventId, initialNotes }: EventAlignmentNotesProps) {
-  const [value, setValue] = useState(initialNotes ?? '')
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
-  const savedRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastSavedRef = useRef(initialNotes ?? '')
+  const savedRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  async function save(text: string) {
-    if (text === lastSavedRef.current) return
+  async function save(html: string) {
+    const content = html === '<p></p>' ? '' : html
+    if (content === lastSavedRef.current) return
     setSaving(true)
     await fetch(`/api/events/${eventId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ notes: text || null }),
+      body: JSON.stringify({ notes: content || null }),
     })
-    lastSavedRef.current = text
+    lastSavedRef.current = content
     setSaving(false)
     setSaved(true)
     if (savedRef.current) clearTimeout(savedRef.current)
     savedRef.current = setTimeout(() => setSaved(false), 2000)
   }
 
-  function handleBlur() {
-    save(value)
-  }
+  const editor = useEditor({
+    extensions: [StarterKit],
+    content: initialNotes ?? '',
+    editorProps: {
+      attributes: {
+        class: 'prose prose-sm max-w-none focus:outline-none min-h-[160px] text-gray-700 leading-relaxed',
+      },
+    },
+    onBlur: ({ editor }) => {
+      save(editor.getHTML())
+    },
+  })
+
+  useEffect(() => {
+    return () => {
+      if (savedRef.current) clearTimeout(savedRef.current)
+    }
+  }, [])
+
+  if (!editor) return null
 
   return (
     <div className="space-y-2">
@@ -43,14 +89,59 @@ export function EventAlignmentNotes({ eventId, initialNotes }: EventAlignmentNot
           {!saving && saved && <><Check size={11} className="text-green-500" /> Salvo</>}
         </span>
       </div>
-      <textarea
-        value={value}
-        onChange={e => setValue(e.target.value)}
-        onBlur={handleBlur}
-        placeholder="Escreva aqui os alinhamentos do evento: horários, setlist combinado, orientações do cliente, observações técnicas, contatos no local..."
-        rows={8}
-        className="w-full text-sm text-gray-700 border border-gray-200 rounded-lg p-3 resize-y focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400 leading-relaxed"
-      />
+
+      <div className="border border-gray-200 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent">
+        {/* Toolbar */}
+        <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-gray-100 bg-gray-50">
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleBold().run()}
+            active={editor.isActive('bold')}
+            title="Negrito (Ctrl+B)"
+          >
+            <Bold size={15} />
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleItalic().run()}
+            active={editor.isActive('italic')}
+            title="Itálico (Ctrl+I)"
+          >
+            <Italic size={15} />
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleStrike().run()}
+            active={editor.isActive('strike')}
+            title="Tachado"
+          >
+            <Strikethrough size={15} />
+          </ToolbarButton>
+
+          <div className="w-px h-4 bg-gray-200 mx-1" />
+
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleBulletList().run()}
+            active={editor.isActive('bulletList')}
+            title="Lista de marcadores"
+          >
+            <List size={15} />
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleOrderedList().run()}
+            active={editor.isActive('orderedList')}
+            title="Lista numerada"
+          >
+            <ListOrdered size={15} />
+          </ToolbarButton>
+        </div>
+
+        {/* Editor */}
+        <div className="p-3">
+          <EditorContent editor={editor} />
+        </div>
+      </div>
+
+      <p className="text-xs text-gray-400">
+        Salvo automaticamente ao sair do campo
+      </p>
     </div>
   )
 }
