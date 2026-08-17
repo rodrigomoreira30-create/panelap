@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { X, Link2, Check } from 'lucide-react'
+import { X, Link2, Check, Loader2 } from 'lucide-react'
 import type { EventData, EventMusician } from './EventDetailClient'
 
 const POSITIONS = [
@@ -59,14 +59,36 @@ type Props = {
   eventId: string
   musicians: EventMusician[]
   bandMembers: BandMember[]
+  initialTeamNotes?: string | null
 }
 
-export function TeamPanel({ eventId, musicians, bandMembers }: Props) {
+export function TeamPanel({ eventId, musicians, bandMembers, initialTeamNotes }: Props) {
   const queryClient = useQueryClient()
   const queryKey = ['event', eventId]
   const [selectedUserId, setSelectedUserId] = useState('')
   const [selectedPosition, setSelectedPosition] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  const [teamNotes, setTeamNotes] = useState(initialTeamNotes ?? '')
+  const [notesSaving, setNotesSaving] = useState(false)
+  const [notesSaved, setNotesSaved] = useState(false)
+  const lastSavedNotes = useRef(initialTeamNotes ?? '')
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  async function saveTeamNotes(text: string) {
+    if (text === lastSavedNotes.current) return
+    setNotesSaving(true)
+    await fetch(`/api/events/${eventId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ team_notes: text || null }),
+    })
+    lastSavedNotes.current = text
+    setNotesSaving(false)
+    setNotesSaved(true)
+    if (savedTimer.current) clearTimeout(savedTimer.current)
+    savedTimer.current = setTimeout(() => setNotesSaved(false), 2000)
+  }
 
   function handleCopyLink(token: string, musicianId: string) {
     const url = `${window.location.origin}/musico/${token}`
@@ -221,6 +243,25 @@ export function TeamPanel({ eventId, musicians, bandMembers }: Props) {
           </button>
         </div>
       )}
+
+      {/* Observações da equipe */}
+      <div className="pt-2 border-t border-gray-100">
+        <div className="flex items-center justify-between mb-1.5">
+          <p className="text-sm font-medium text-gray-700">Observações Equipe Escalada</p>
+          <span className="text-xs text-gray-400 flex items-center gap-1 h-4">
+            {notesSaving && <><Loader2 size={11} className="animate-spin" /> Salvando...</>}
+            {!notesSaving && notesSaved && <><Check size={11} className="text-green-500" /> Salvo</>}
+          </span>
+        </div>
+        <textarea
+          value={teamNotes}
+          onChange={e => setTeamNotes(e.target.value)}
+          onBlur={e => saveTeamNotes(e.target.value)}
+          placeholder="Orientações internas para a equipe: horários de montagem, contatos, logística..."
+          rows={3}
+          className="w-full text-sm text-gray-700 border border-gray-200 rounded-lg p-2.5 resize-y overflow-y-auto focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400 leading-relaxed"
+        />
+      </div>
     </div>
   )
 }

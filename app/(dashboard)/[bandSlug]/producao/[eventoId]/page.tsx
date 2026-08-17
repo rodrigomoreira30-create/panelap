@@ -105,7 +105,7 @@ export default async function EventDetailPage({
           />
         )}
 
-        <EventDetailClient eventoId={eventoId} bandMembers={bandMembers} />
+        <EventDetailClient eventoId={eventoId} bandMembers={bandMembers} initialTeamNotes={event.team_notes ?? null} />
 
         <EventDocuments
           eventId={eventoId}

@@ -34,6 +34,7 @@ type BandMember = { id: string; name: string }
 type Props = {
   eventoId: string
   bandMembers: BandMember[]
+  initialTeamNotes?: string | null
 }
 
 async function fetchEventData(eventoId: string): Promise<EventData> {
@@ -46,7 +47,7 @@ async function fetchEventData(eventoId: string): Promise<EventData> {
   }
 }
 
-export function EventDetailClient({ eventoId, bandMembers }: Props) {
+export function EventDetailClient({ eventoId, bandMembers, initialTeamNotes }: Props) {
   const { data, isError, refetch } = useQuery({
     queryKey: ['event', eventoId],
     queryFn: () => fetchEventData(eventoId),
@@ -75,6 +76,7 @@ export function EventDetailClient({ eventoId, bandMembers }: Props) {
           eventId={eventoId}
           musicians={data?.event_musicians ?? []}
           bandMembers={bandMembers}
+          initialTeamNotes={initialTeamNotes}
         />
       </div>
     </>

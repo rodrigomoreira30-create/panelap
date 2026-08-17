@@ -13,6 +13,7 @@ export const eventUpdateSchema = z.object({
   status:               z.enum(['contracted', 'active', 'done']).optional(),
   technical_visit_date: z.string().datetime().optional().nullable(),
   notes:                z.string().optional().nullable(),
+  team_notes:           z.string().optional().nullable(),
 }).refine(data => Object.keys(data).length > 0, { message: 'At least one field required' })
 
 export type EventUpdateInput = z.infer<typeof eventUpdateSchema>
