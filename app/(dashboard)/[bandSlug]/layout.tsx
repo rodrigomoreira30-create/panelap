@@ -43,7 +43,7 @@ export default async function DashboardLayout({
       <QueryProvider>
         <div className="flex h-screen bg-gray-50">
           <Sidebar />
-          <main className="flex-1 overflow-auto p-6">{children}</main>
+          <main className="flex-1 overflow-auto p-4 pt-16 md:p-6 md:pt-6">{children}</main>
         </div>
       </QueryProvider>
     </BandProvider>
