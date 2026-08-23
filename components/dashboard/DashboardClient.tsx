@@ -12,6 +12,9 @@ export type DashboardKpi = {
   leadsAbertos: number
   faturamentoPrevisto: number
   leadsNovos: number
+  aReceber30dias: number
+  recebidoMes: number
+  previstMes: number
 }
 
 export type LeadsByDayItem = { date: string; count: number }

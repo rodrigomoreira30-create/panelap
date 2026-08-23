@@ -112,6 +112,28 @@ export async function GET(request: Request) {
     count: countByStage.get(s.key) ?? 0,
   }))
 
+  // KPI financeiro: a receber nos próximos 30 dias
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0)
+  const em30dias = new Date(hoje); em30dias.setDate(hoje.getDate() + 30); em30dias.setHours(23, 59, 59)
+  const financesNext30 = await prisma.eventFinance.findMany({
+    where: { band_id: bandId, event_date: { gte: hoje, lte: em30dias } },
+    select: { expected_revenue: true, received_amount: true },
+  })
+  const aReceber30dias = financesNext30.reduce((s, f) => {
+    const saldo = parseFloat(f.expected_revenue.toString()) - parseFloat(f.received_amount.toString())
+    return s + Math.max(0, saldo)
+  }, 0)
+
+  // KPI financeiro: recebido e previsto no mês atual
+  const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1)
+  const fimMes    = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 23, 59, 59)
+  const financesMes = await prisma.eventFinance.findMany({
+    where: { band_id: bandId, event_date: { gte: inicioMes, lte: fimMes } },
+    select: { expected_revenue: true, received_amount: true },
+  })
+  const recebidoMes = financesMes.reduce((s, f) => s + parseFloat(f.received_amount.toString()), 0)
+  const previstMes  = financesMes.reduce((s, f) => s + parseFloat(f.expected_revenue.toString()), 0)
+
   // Próximos eventos
   const upcoming = await prisma.event.findMany({
     where: { band_id: bandId, event_date: { gte: new Date() } },
@@ -128,7 +150,7 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     data: {
-      kpi: { leadsAbertos, faturamentoPrevisto, leadsNovos },
+      kpi: { leadsAbertos, faturamentoPrevisto, leadsNovos, aReceber30dias, recebidoMes, previstMes },
       leadsByDay,
       leadsByStage,
       upcomingEvents,
