@@ -29,6 +29,8 @@ interface LeadData {
   venue_has_sound: boolean
   venue_has_light: boolean
   observations: string | null
+  assessor: string | null
+  assessor_phone: string | null
   status: string
   source: string | null
   tags: string[]
@@ -84,6 +86,8 @@ export function LeadEditPanel({ lead, stages, sources, initialDocs, initialAttra
     venue_has_light: lead.venue_has_light,
     observations:    lead.observations ?? '',
     source:          lead.source ?? '',
+    assessor:        lead.assessor ?? '',
+    assessor_phone:  lead.assessor_phone ?? '',
   })
 
   function set(key: string, value: string | boolean) {
@@ -102,6 +106,8 @@ export function LeadEditPanel({ lead, stages, sources, initialDocs, initialAttra
       venue_has_light: displayed.venue_has_light,
       observations:    displayed.observations ?? '',
       source:          displayed.source ?? '',
+      assessor:        displayed.assessor ?? '',
+      assessor_phone:  displayed.assessor_phone ?? '',
     })
     setError('')
     setEditing(false)
@@ -124,6 +130,8 @@ export function LeadEditPanel({ lead, stages, sources, initialDocs, initialAttra
         venue_has_light: form.venue_has_light,
         observations:    form.observations || null,
         source:          form.source || null,
+        assessor:        form.assessor || null,
+        assessor_phone:  form.assessor_phone || null,
       }),
     })
     setSaving(false)
@@ -141,6 +149,8 @@ export function LeadEditPanel({ lead, stages, sources, initialDocs, initialAttra
         venue_has_light: form.venue_has_light,
         observations:    form.observations || null,
         source:          form.source || null,
+        assessor:        form.assessor || null,
+        assessor_phone:  form.assessor_phone || null,
       }))
       setEditing(false)
       router.refresh()
@@ -325,6 +335,34 @@ export function LeadEditPanel({ lead, stages, sources, initialDocs, initialAttra
               {displayed.assignee && (
                 <div><span className="font-medium">Responsável:</span> {displayed.assignee.name}</div>
               )}
+
+              <div>
+                <span className="font-medium">Assessora:</span>{' '}
+                {editing ? (
+                  <Input
+                    value={form.assessor}
+                    onChange={e => set('assessor', e.target.value)}
+                    className="mt-1 h-8 text-sm"
+                    placeholder="Nome da assessora"
+                  />
+                ) : (
+                  displayed.assessor ?? <span className="text-gray-400">Não informada</span>
+                )}
+              </div>
+
+              <div>
+                <span className="font-medium">Telefone da assessora:</span>{' '}
+                {editing ? (
+                  <Input
+                    value={form.assessor_phone}
+                    onChange={e => set('assessor_phone', e.target.value)}
+                    className="mt-1 h-8 text-sm"
+                    placeholder="Telefone da assessora"
+                  />
+                ) : (
+                  displayed.assessor_phone ?? <span className="text-gray-400">Não informado</span>
+                )}
+              </div>
 
               <div>
                 <span className="font-medium">Observações:</span>

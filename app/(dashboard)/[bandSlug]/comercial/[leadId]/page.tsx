@@ -69,6 +69,8 @@ export default async function LeadDetailPage({
             venue_has_sound: lead.venue_has_sound,
             venue_has_light: lead.venue_has_light,
             observations:    lead.observations,
+            assessor:        lead.assessor,
+            assessor_phone:  lead.assessor_phone,
             status:          lead.status,
             source:          lead.source,
             tags:            (lead.tags as string[]) ?? [],
