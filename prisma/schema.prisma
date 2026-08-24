@@ -123,6 +123,7 @@ model Lead {
   source          String?
   assigned_to     String?
   assessor        String?
+  assessor_phone  String?
   observations    String?
   created_at        DateTime   @default(now())
   updated_at        DateTime   @updatedAt

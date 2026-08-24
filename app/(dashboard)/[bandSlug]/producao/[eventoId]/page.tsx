@@ -89,6 +89,7 @@ export default async function EventDetailPage({
           attractions={attractions.map(a => ({ id: a.id, name: a.name }))}
           attractionsTotal={attractionsTotal}
           assessor={event.lead?.assessor ?? null}
+          assessorPhone={event.lead?.assessor_phone ?? null}
           leadId={event.lead?.id ?? null}
         />
 

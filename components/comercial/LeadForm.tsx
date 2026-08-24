@@ -22,7 +22,7 @@ export function LeadForm({ sources, onSuccess, onCancel }: LeadFormProps) {
     client_name: '', phone: '', event_type: '', source: '',
     event_date: '', city: '', venue_name: '', budget: '',
     venue_has_sound: false, venue_has_light: false,
-    assessor: '', observations: '',
+    assessor: '', assessor_phone: '', observations: '',
   })
 
   function set(key: string, value: string | boolean) {
@@ -114,6 +114,10 @@ export function LeadForm({ sources, onSuccess, onCancel }: LeadFormProps) {
         <div>
           <Label>Assessor(a)</Label>
           <Input value={form.assessor} onChange={e => set('assessor', e.target.value)} placeholder="Nome da assessoria" />
+        </div>
+        <div>
+          <Label>Telefone da assessoria</Label>
+          <Input value={form.assessor_phone} onChange={e => set('assessor_phone', e.target.value)} placeholder="(00) 00000-0000" />
         </div>
       </div>
       <div className="flex gap-4">

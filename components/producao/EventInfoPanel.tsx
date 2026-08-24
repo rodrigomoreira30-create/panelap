@@ -46,10 +46,11 @@ interface EventInfoPanelProps {
   attractions?: Attraction[]
   attractionsTotal?: number | null
   assessor?: string | null
+  assessorPhone?: string | null
   leadId?: string | null
 }
 
-export function EventInfoPanel({ event, attractions = [], attractionsTotal, assessor: initialAssessor, leadId }: EventInfoPanelProps) {
+export function EventInfoPanel({ event, attractions = [], attractionsTotal, assessor: initialAssessor, assessorPhone, leadId }: EventInfoPanelProps) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -279,7 +280,12 @@ export function EventInfoPanel({ event, attractions = [], attractionsTotal, asse
             <Input value={form.assessor} onChange={e => set('assessor', e.target.value)}
               className="mt-1 h-7 text-sm" placeholder="Nome da assessoria" />
           ) : (
-            <span>{assessorDisplay || '—'}</span>
+            <span>
+              {assessorDisplay || '—'}
+              {assessorPhone && !editing && (
+                <span className="text-gray-400 ml-2 text-xs">· {assessorPhone}</span>
+              )}
+            </span>
           )}
         </div>
       </div>

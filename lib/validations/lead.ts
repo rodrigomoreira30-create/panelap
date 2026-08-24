@@ -15,6 +15,7 @@ export const leadCreateSchema = z.object({
   budget:          z.number().positive().optional(),
   assigned_to:     z.string().cuid().optional(),
   assessor:        z.string().optional(),
+  assessor_phone:  z.string().optional(),
   observations:    z.string().optional(),
   tags:            z.array(z.string().min(1).max(50)).optional(),
 })
@@ -33,6 +34,7 @@ export const leadUpdateSchema = z.object({
   assigned_to:      z.string().cuid().optional().nullable(),
   status:           z.string().min(1).optional(),
   assessor:         z.string().optional().nullable(),
+  assessor_phone:   z.string().optional().nullable(),
   observations:     z.string().optional(),
   tags:             z.array(z.string().min(1).max(50)).optional(),
   proposal_discount: z.number().min(0).optional().nullable(),
