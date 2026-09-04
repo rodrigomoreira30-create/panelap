@@ -169,25 +169,31 @@ export function TeamPanel({ eventId, musicians, bandMembers, initialTeamNotes }:
         {musicians.map(em => {
           const cfg = statusConfig[em.status] ?? statusConfig.pending
           return (
-            <div key={em.id} className="flex items-center gap-3 p-3 border rounded-lg">
-              <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-sm font-medium text-blue-700">
-                {em.user.name.charAt(0).toUpperCase()}
+            <div key={em.id} className="flex items-center gap-3 p-4 border rounded-xl bg-white shadow-sm">
+              {/* Ícone grande do instrumento */}
+              <div className="h-12 w-12 rounded-full bg-indigo-50 flex items-center justify-center text-2xl flex-shrink-0">
+                {POSITION_ICONS[em.instrument ?? ''] ?? '🎵'}
               </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">{em.user.name}</p>
-                {em.instrument && (
-                  <p className="text-xs text-gray-400">
-                    {POSITION_ICONS[em.instrument] && <span className="mr-1">{POSITION_ICONS[em.instrument]}</span>}
-                    {em.instrument}
-                  </p>
-                )}
+
+              {/* Info */}
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wide truncate">
+                  {em.instrument ?? 'Sem posição'}
+                </p>
+                <p className="text-sm font-medium text-gray-900 truncate">
+                  {em.user.name}
+                </p>
               </div>
-              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cfg.className}`}>
+
+              {/* Status badge */}
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${cfg.className}`}>
                 {cfg.label}
               </span>
+
+              {/* Copiar link */}
               <button
                 onClick={() => handleCopyLink(em.user.schedule_token, em.id)}
-                className="text-gray-400 hover:text-blue-500 transition-colors p-0.5"
+                className="text-gray-400 hover:text-blue-500 transition-colors p-0.5 shrink-0"
                 aria-label="Copiar link da agenda"
                 title="Copiar link da agenda"
               >
@@ -195,12 +201,14 @@ export function TeamPanel({ eventId, musicians, bandMembers, initialTeamNotes }:
                   ? <Check size={14} className="text-green-500" />
                   : <Link2 size={14} />}
               </button>
+
+              {/* Remover */}
               <button
                 onClick={() => {
                   if (window.confirm('Remover músico do evento?')) removeMutation.mutate(em.id)
                 }}
                 disabled={removeMutation.isPending}
-                className="text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                className="text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50 shrink-0"
                 aria-label="Remover músico"
               >
                 <X size={16} />

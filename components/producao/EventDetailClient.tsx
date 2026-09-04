@@ -35,6 +35,7 @@ type Props = {
   eventoId: string
   bandMembers: BandMember[]
   initialTeamNotes?: string | null
+  sections?: ('checklist' | 'team')[]
 }
 
 async function fetchEventData(eventoId: string): Promise<EventData> {
@@ -47,7 +48,7 @@ async function fetchEventData(eventoId: string): Promise<EventData> {
   }
 }
 
-export function EventDetailClient({ eventoId, bandMembers, initialTeamNotes }: Props) {
+export function EventDetailClient({ eventoId, bandMembers, initialTeamNotes, sections }: Props) {
   const { data, isError, refetch } = useQuery({
     queryKey: ['event', eventoId],
     queryFn: () => fetchEventData(eventoId),
@@ -66,19 +67,22 @@ export function EventDetailClient({ eventoId, bandMembers, initialTeamNotes }: P
 
   return (
     <>
-      <div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-3">Checklists Operacionais</h2>
-        <ChecklistPanel checklists={data?.checklists ?? []} eventoId={eventoId} />
-      </div>
-      <div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-3">Equipe Escalada</h2>
-        <TeamPanel
-          eventId={eventoId}
-          musicians={data?.event_musicians ?? []}
-          bandMembers={bandMembers}
-          initialTeamNotes={initialTeamNotes}
-        />
-      </div>
+      {(!sections || sections.includes('checklist')) && (
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">Checklists Operacionais</h2>
+          <ChecklistPanel checklists={data?.checklists ?? []} eventoId={eventoId} />
+        </div>
+      )}
+      {(!sections || sections.includes('team')) && (
+        <div>
+          <TeamPanel
+            eventId={eventoId}
+            musicians={data?.event_musicians ?? []}
+            bandMembers={bandMembers}
+            initialTeamNotes={initialTeamNotes}
+          />
+        </div>
+      )}
     </>
   )
 }

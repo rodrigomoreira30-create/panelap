@@ -2,11 +2,7 @@ import { QueryClient, HydrationBoundary, dehydrate } from '@tanstack/react-query
 import { prisma } from '@/lib/prisma'
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
-import { EventDetailClient } from '@/components/producao/EventDetailClient'
-import { EventAlignmentNotes } from '@/components/producao/EventAlignmentNotes'
-import { EventInfoPanel } from '@/components/producao/EventInfoPanel'
-import { EventDocuments } from '@/components/producao/EventDocuments'
-import { EventAttractionsEditor } from '@/components/producao/EventAttractionsEditor'
+import { EventTabs } from '@/components/producao/EventTabs'
 
 export default async function EventDetailPage({
   params,
@@ -71,55 +67,44 @@ export default async function EventDetailPage({
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <div className="space-y-8 max-w-4xl">
-        <EventInfoPanel
-          event={{
-            id:              event.id,
-            client_name:     event.client_name,
-            event_type:      event.event_type,
-            event_date:      event.event_date.toISOString(),
-            event_time:      event.event_time ?? null,
-            venue_name:      event.venue_name,
-            venue_address:   event.venue_address ?? null,
-            venue_has_sound: event.venue_has_sound,
-            venue_has_light: event.venue_has_light,
-            value:           parseFloat(event.value.toString()),
-            status:          event.status,
-          }}
-          attractions={attractions.map(a => ({ id: a.id, name: a.name }))}
-          attractionsTotal={attractionsTotal}
-          assessor={event.lead?.assessor ?? null}
-          assessorPhone={event.lead?.assessor_phone ?? null}
-          leadId={event.lead?.id ?? null}
-        />
-
-        {event.lead && (
-          <EventAttractionsEditor
-            leadId={event.lead.id}
-            initialAttractions={attractions.map(a => ({
-              id: a.id,
-              name: a.name,
-              custom_value: parseFloat(a.custom_value.toString()),
-              observations: a.observations ?? null,
-            }))}
-            initialDiscount={discount}
-          />
-        )}
-
-        <EventDetailClient eventoId={eventoId} bandMembers={bandMembers} initialTeamNotes={event.team_notes ?? null} />
-
-        <EventDocuments
-          eventId={eventoId}
-          initialDocs={event.documents.map(d => ({
-            id: d.id,
-            file_name: d.file_name,
-            file_url: d.file_url,
-            created_at: d.created_at.toISOString(),
-          }))}
-        />
-
-        <EventAlignmentNotes eventId={eventoId} initialNotes={event.notes ?? null} />
-      </div>
+      <EventTabs
+        event={{
+          id:              event.id,
+          client_name:     event.client_name,
+          event_type:      event.event_type,
+          event_date:      event.event_date.toISOString(),
+          event_time:      event.event_time ?? null,
+          venue_name:      event.venue_name,
+          venue_address:   event.venue_address ?? null,
+          venue_has_sound: event.venue_has_sound,
+          venue_has_light: event.venue_has_light,
+          value:           parseFloat(event.value.toString()),
+          status:          event.status,
+        }}
+        musicianCount={event.event_musicians.length}
+        attractions={attractions.map(a => ({ id: a.id, name: a.name }))}
+        attractionsTotal={attractionsTotal}
+        assessor={event.lead?.assessor ?? null}
+        assessorPhone={event.lead?.assessor_phone ?? null}
+        leadId={event.lead?.id ?? null}
+        leadAttractions={attractions.map(a => ({
+          id:           a.id,
+          name:         a.name,
+          custom_value: parseFloat(a.custom_value.toString()),
+          observations: a.observations ?? null,
+        }))}
+        initialDiscount={discount}
+        eventoId={eventoId}
+        bandMembers={bandMembers}
+        initialTeamNotes={event.team_notes ?? null}
+        initialDocs={event.documents.map(d => ({
+          id:         d.id,
+          file_name:  d.file_name,
+          file_url:   d.file_url,
+          created_at: d.created_at.toISOString(),
+        }))}
+        initialNotes={event.notes ?? null}
+      />
     </HydrationBoundary>
   )
 }
