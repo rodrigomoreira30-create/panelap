@@ -18,10 +18,11 @@ export type Checklist = {
 
 export type EventMusician = {
   id: string
-  user_id: string
+  user_id: string | null
   instrument: string | null
   status: 'pending' | 'confirmed' | 'declined'
-  user: { id: string; name: string; avatar_url: string | null; schedule_token: string }
+  cache_value: number | null
+  user: { id: string; name: string; avatar_url: string | null; schedule_token: string } | null
 }
 
 export type EventData = {

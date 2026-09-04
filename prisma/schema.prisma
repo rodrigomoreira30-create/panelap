@@ -235,15 +235,16 @@ model ChecklistItem {
 model EventMusician {
   id           String                @id @default(cuid())
   event_id     String
-  user_id      String
+  user_id      String?
   instrument   String?
   status       MusicianConfirmStatus @default(pending)
   confirmed_at DateTime?
+  cache_value  Decimal?
 
-  event Event @relation(fields: [event_id], references: [id], onDelete: Cascade)
-  user  User  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  event Event  @relation(fields: [event_id], references: [id], onDelete: Cascade)
+  user  User?  @relation(fields: [user_id], references: [id], onDelete: SetNull)
 
-  @@unique([event_id, user_id])
+  @@index([event_id])
 }
 
 model Document {

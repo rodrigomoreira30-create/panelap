@@ -1,51 +1,11 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { X, Link2, Check, Loader2 } from 'lucide-react'
+import { X, Link2, Check, Loader2, Plus, UserPlus } from 'lucide-react'
 import type { EventData, EventMusician } from './EventDetailClient'
-
-const POSITIONS = [
-  'Cantor 1',
-  'Cantor 2',
-  'Cantor 3',
-  'Cantor 4',
-  'Guitarrista',
-  'Baixista',
-  'Baterista',
-  'Tecladista',
-  'Saxofonista',
-  'Sanfoneiro',
-  'Trompetista',
-  'Trombonista',
-  'Tecnico',
-  'Equipe de Som',
-  'DJ',
-  'Time SB',
-  'Time AllMusic',
-  'Time Beats',
-]
-
-const POSITION_ICONS: Record<string, string> = {
-  'Cantor 1':    '🎤',
-  'Cantor 2':    '🎤',
-  'Cantor 3':    '🎤',
-  'Cantor 4':    '🎤',
-  'Guitarrista': '🎸',
-  'Baixista':    '🎸',
-  'Baterista':   '🥁',
-  'Tecladista':  '🎹',
-  'Saxofonista': '🎷',
-  'Sanfoneiro':  '🪗',
-  'Trompetista': '🎺',
-  'Trombonista': '🎺',
-  'Tecnico':       '🎛️',
-  'Equipe de Som': '🔊',
-  'DJ':            '🎧',
-  'Time SB':       '🎵',
-  'Time AllMusic': '🎵',
-  'Time Beats':    '🎵',
-}
+import { InstrumentPicker } from './InstrumentPicker'
+import { AssignMusicianModal } from './AssignMusicianModal'
 
 const statusConfig: Record<string, { label: string; className: string }> = {
   pending:   { label: 'Pendente',   className: 'bg-yellow-100 text-yellow-700' },
@@ -65,29 +25,26 @@ type Props = {
 export function TeamPanel({ eventId, musicians, bandMembers, initialTeamNotes }: Props) {
   const queryClient = useQueryClient()
   const queryKey = ['event', eventId]
-  const [selectedUserId, setSelectedUserId] = useState('')
-  const [selectedPosition, setSelectedPosition] = useState('')
+
+  const [showPicker, setShowPicker] = useState(false)
+  const [assigning, setAssigning] = useState<EventMusician | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
   const [teamNotes, setTeamNotes] = useState(initialTeamNotes ?? '')
   const [notesSaving, setNotesSaving] = useState(false)
   const [notesSaved, setNotesSaved] = useState(false)
-  const lastSavedNotes = useRef(initialTeamNotes ?? '')
-  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   async function saveTeamNotes(text: string) {
-    if (text === lastSavedNotes.current) return
+    if (text === (initialTeamNotes ?? '')) return
     setNotesSaving(true)
     await fetch(`/api/events/${eventId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ team_notes: text || null }),
     })
-    lastSavedNotes.current = text
     setNotesSaving(false)
     setNotesSaved(true)
-    if (savedTimer.current) clearTimeout(savedTimer.current)
-    savedTimer.current = setTimeout(() => setNotesSaved(false), 2000)
+    setTimeout(() => setNotesSaved(false), 2000)
   }
 
   function handleCopyLink(token: string, musicianId: string) {
@@ -98,58 +55,51 @@ export function TeamPanel({ eventId, musicians, bandMembers, initialTeamNotes }:
     }).catch(() => {})
   }
 
-  const alreadyAdded = new Set(musicians.map(m => m.user_id))
-  const usedPositions = new Set(musicians.map(m => m.instrument).filter(Boolean))
-  const available = bandMembers.filter(m => !alreadyAdded.has(m.id))
-  const availablePositions = POSITIONS.filter(p => !usedPositions.has(p))
-
-  const addMutation = useMutation({
-    mutationFn: async ({ userId, position }: { userId: string; position: string }) => {
+  // Adicionar posição (sem músico)
+  const addPositionMutation = useMutation({
+    mutationFn: async (instrument: string) => {
       const res = await fetch('/api/event-musicians', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ event_id: eventId, user_id: userId, instrument: position || undefined }),
+        body: JSON.stringify({ event_id: eventId, instrument }),
       })
-      if (!res.ok) throw new Error('Falha ao adicionar músico')
+      if (!res.ok) throw new Error('Falha ao adicionar posição')
+      return res.json()
     },
-    onMutate: async ({ userId, position }) => {
-      await queryClient.cancelQueries({ queryKey })
-      const previous = queryClient.getQueryData(queryKey)
-      const member = bandMembers.find(m => m.id === userId)
-      const tempMusician: EventMusician = {
-        id: `temp-${Date.now()}`,
-        user_id: userId,
-        instrument: position || null,
-        status: 'pending',
-        user: { id: userId, name: member?.name ?? '', avatar_url: null, schedule_token: '' },
-      }
-      queryClient.setQueryData<EventData>(queryKey, old =>
-        old ? { ...old, event_musicians: [...old.event_musicians, tempMusician] } : old
-      )
-      setSelectedUserId('')
-      setSelectedPosition('')
-      return { previous }
-    },
-    onError: (_err, _vars, context) => {
-      queryClient.setQueryData(queryKey, context?.previous)
-    },
-    onSettled: () => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey })
     },
   })
 
+  // Atribuir músico + cachê a uma vaga
+  const assignMutation = useMutation({
+    mutationFn: async ({ id, userId, cacheValue }: { id: string; userId: string; cacheValue: number | null }) => {
+      const res = await fetch('/api/event-musicians', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, user_id: userId, cache_value: cacheValue }),
+      })
+      if (!res.ok) throw new Error('Falha ao atribuir músico')
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey })
+      setAssigning(null)
+    },
+  })
+
+  // Remover posição
   const removeMutation = useMutation({
     mutationFn: async (id: string) => {
       const res = await fetch(`/api/event-musicians?id=${id}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error('Falha ao remover músico')
+      if (!res.ok) throw new Error('Falha ao remover')
     },
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey })
       const previous = queryClient.getQueryData(queryKey)
-      queryClient.setQueryData<EventData>(queryKey, (old) => {
-        if (!old) return old
-        return { ...old, event_musicians: old.event_musicians.filter((m) => m.id !== id) }
-      })
+      queryClient.setQueryData<EventData>(queryKey, old =>
+        old ? { ...old, event_musicians: old.event_musicians.filter(m => m.id !== id) } : old
+      )
       return { previous }
     },
     onError: (_err, _vars, context) => {
@@ -160,56 +110,88 @@ export function TeamPanel({ eventId, musicians, bandMembers, initialTeamNotes }:
     },
   })
 
+  function handleInstrumentSelect(instrument: string) {
+    setShowPicker(false)
+    addPositionMutation.mutate(instrument)
+  }
+
+  function handleAssignConfirm(userId: string, cacheValue: number | null) {
+    if (!assigning) return
+    assignMutation.mutate({ id: assigning.id, userId, cacheValue })
+  }
+
+  const assignedUserIds = musicians.filter(m => m.user_id !== null).map(m => m.user_id as string)
+
   return (
     <div className="space-y-4">
+      {/* Lista de vagas */}
       <div className="space-y-2">
         {musicians.length === 0 && (
-          <p className="text-gray-400 text-sm">Nenhum músico escalado ainda.</p>
+          <p className="text-gray-400 text-sm">Nenhuma posição adicionada ainda.</p>
         )}
         {musicians.map(em => {
-          const cfg = statusConfig[em.status] ?? statusConfig.pending
+          const cfg = em.user ? (statusConfig[em.status] ?? statusConfig.pending) : null
           return (
             <div key={em.id} className="flex items-center gap-3 p-4 border rounded-xl bg-white shadow-sm">
-              {/* Ícone grande do instrumento */}
-              <div className="h-12 w-12 rounded-full bg-indigo-50 flex items-center justify-center text-2xl flex-shrink-0">
-                {POSITION_ICONS[em.instrument ?? ''] ?? '🎵'}
+              {/* Ícone */}
+              <div className="h-12 w-12 rounded-full bg-indigo-50 flex items-center justify-center text-xl shrink-0">
+                🎵
               </div>
 
               {/* Info */}
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wide truncate">
-                  {em.instrument ?? 'Sem posição'}
+                  {em.instrument ?? 'Sem instrumento'}
                 </p>
-                <p className="text-sm font-medium text-gray-900 truncate">
-                  {em.user.name}
-                </p>
+                {em.user ? (
+                  <>
+                    <p className="text-sm font-medium text-gray-900 truncate">{em.user.name}</p>
+                    {em.cache_value != null && (
+                      <p className="text-xs text-gray-400">
+                        R$ {Number(em.cache_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-sm font-medium text-orange-500">Vaga aberta</p>
+                )}
               </div>
 
               {/* Status badge */}
-              <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${cfg.className}`}>
-                {cfg.label}
-              </span>
+              {cfg && (
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${cfg.className}`}>
+                  {cfg.label}
+                </span>
+              )}
 
-              {/* Copiar link */}
+              {/* Atribuir músico */}
               <button
-                onClick={() => handleCopyLink(em.user.schedule_token, em.id)}
-                className="text-gray-400 hover:text-blue-500 transition-colors p-0.5 shrink-0"
-                aria-label="Copiar link da agenda"
-                title="Copiar link da agenda"
+                onClick={() => setAssigning(em)}
+                className="text-gray-400 hover:text-indigo-500 transition-colors p-1 shrink-0"
+                title="Atribuir músico"
               >
-                {copiedId === em.id
-                  ? <Check size={14} className="text-green-500" />
-                  : <Link2 size={14} />}
+                <UserPlus size={16} />
               </button>
+
+              {/* Copiar link (só se tiver músico) */}
+              {em.user && em.user.schedule_token && (
+                <button
+                  onClick={() => handleCopyLink(em.user!.schedule_token, em.id)}
+                  className="text-gray-400 hover:text-blue-500 transition-colors p-0.5 shrink-0"
+                  title="Copiar link da agenda"
+                >
+                  {copiedId === em.id
+                    ? <Check size={14} className="text-green-500" />
+                    : <Link2 size={14} />}
+                </button>
+              )}
 
               {/* Remover */}
               <button
-                onClick={() => {
-                  if (window.confirm('Remover músico do evento?')) removeMutation.mutate(em.id)
-                }}
+                onClick={() => { if (window.confirm('Remover esta posição?')) removeMutation.mutate(em.id) }}
                 disabled={removeMutation.isPending}
                 className="text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50 shrink-0"
-                aria-label="Remover músico"
+                title="Remover posição"
               >
                 <X size={16} />
               </button>
@@ -218,39 +200,17 @@ export function TeamPanel({ eventId, musicians, bandMembers, initialTeamNotes }:
         })}
       </div>
 
-      {available.length > 0 && (
-        <div className="space-y-2">
-          <div className="flex gap-2">
-            <select
-              value={selectedUserId}
-              onChange={e => setSelectedUserId(e.target.value)}
-              className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm"
-            >
-              <option value="">Selecionar membro...</option>
-              {available.map(m => (
-                <option key={m.id} value={m.id}>{m.name}</option>
-              ))}
-            </select>
-            <select
-              value={selectedPosition}
-              onChange={e => setSelectedPosition(e.target.value)}
-              className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm"
-            >
-              <option value="">Selecionar posição...</option>
-              {availablePositions.map(p => (
-                <option key={p} value={p}>{POSITION_ICONS[p]} {p}</option>
-              ))}
-            </select>
-          </div>
-          <button
-            onClick={() => { if (selectedUserId) addMutation.mutate({ userId: selectedUserId, position: selectedPosition }) }}
-            disabled={!selectedUserId || addMutation.isPending}
-            className="w-full px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-          >
-            {addMutation.isPending ? 'Adicionando...' : 'Adicionar à equipe'}
-          </button>
-        </div>
-      )}
+      {/* Botão adicionar */}
+      <button
+        onClick={() => setShowPicker(true)}
+        disabled={addPositionMutation.isPending}
+        className="flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-800 font-medium disabled:opacity-50 transition-colors"
+      >
+        {addPositionMutation.isPending
+          ? <Loader2 size={15} className="animate-spin" />
+          : <Plus size={15} />}
+        Adicionar instrumento
+      </button>
 
       {/* Observações da equipe */}
       <div className="pt-2 border-t border-gray-100">
@@ -265,11 +225,31 @@ export function TeamPanel({ eventId, musicians, bandMembers, initialTeamNotes }:
           value={teamNotes}
           onChange={e => setTeamNotes(e.target.value)}
           onBlur={e => saveTeamNotes(e.target.value)}
-          placeholder="Orientações internas para a equipe: horários de montagem, contatos, logística..."
+          placeholder="Orientações internas para a equipe..."
           rows={3}
-          className="w-full text-sm text-gray-700 border border-gray-200 rounded-lg p-2.5 resize-y overflow-y-auto focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400 leading-relaxed"
+          className="w-full text-sm text-gray-700 border border-gray-200 rounded-lg p-2.5 resize-y focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400 leading-relaxed"
         />
       </div>
+
+      {/* Modal: Selecionar instrumento */}
+      {showPicker && (
+        <InstrumentPicker
+          onSelect={handleInstrumentSelect}
+          onClose={() => setShowPicker(false)}
+        />
+      )}
+
+      {/* Modal: Atribuir músico */}
+      {assigning && (
+        <AssignMusicianModal
+          instrument={assigning.instrument ?? 'Sem instrumento'}
+          currentUserId={assigning.user_id}
+          bandMembers={bandMembers}
+          assignedUserIds={assignedUserIds}
+          onConfirm={handleAssignConfirm}
+          onClose={() => setAssigning(null)}
+        />
+      )}
     </div>
   )
 }

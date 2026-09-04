@@ -56,6 +56,7 @@ export default async function EventDetailPage({
       user_id: m.user_id,
       instrument: m.instrument,
       status: m.status,
+      cache_value: m.cache_value ? parseFloat(m.cache_value.toString()) : null,
       user: m.user,
     })),
   })
