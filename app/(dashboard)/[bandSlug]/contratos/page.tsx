@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import { ContractListClient } from './ContractListClient'
+import type { ContractFull } from '@/types'
 
 export default async function ContratosPage({
   params,
@@ -22,10 +23,16 @@ export default async function ContratosPage({
     orderBy: { created_at: 'desc' },
   })
 
+  // Prisma Decimal não é serializável pelo React RSC — converte event.value para número
+  const serializedContracts = contracts.map(c => ({
+    ...c,
+    event: { ...c.event, value: Number(c.event.value) },
+  }))
+
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Contratos</h1>
-      <ContractListClient contracts={contracts} bandSlug={bandSlug} />
+      <ContractListClient contracts={serializedContracts as ContractFull[]} bandSlug={bandSlug} />
     </div>
   )
 }

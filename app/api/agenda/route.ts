@@ -47,7 +47,9 @@ export async function GET(request: Request) {
         status:    e.status,
         eventType: e.event_type,
         venue:     e.venue_name,
-        musicians: e.event_musicians.map(em => em.user.name),
+        musicians: e.event_musicians
+          .map(em => em.user?.name)
+          .filter((n): n is string => n != null),
       },
     })),
     ...leads.map(l => ({

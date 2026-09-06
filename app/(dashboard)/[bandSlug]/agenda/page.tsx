@@ -73,7 +73,9 @@ export default async function AgendaPage({
         status:    e.status,
         eventType: e.event_type,
         venue:     e.venue_name,
-        musicians: e.event_musicians.map(em => em.user.name),
+        musicians: e.event_musicians
+          .map(em => em.user?.name)
+          .filter((n): n is string => n != null),
       },
     })),
     ...leads.map(l => ({
@@ -107,12 +109,14 @@ export default async function AgendaPage({
         </div>
       </div>
 
-      <PendingConfirmations items={pendingMusicians.map(pm => ({
-        event_id: pm.event_id,
-        user_id:  pm.user_id,
-        user:     { name: pm.user.name },
-        event:    { client_name: pm.event.client_name, event_type: pm.event.event_type, event_date: pm.event.event_date },
-      }))} />
+      <PendingConfirmations items={pendingMusicians
+        .filter(pm => pm.user !== null)
+        .map(pm => ({
+          event_id: pm.event_id,
+          user_id:  pm.user_id ?? '',
+          user:     { name: pm.user!.name },
+          event:    { client_name: pm.event.client_name, event_type: pm.event.event_type, event_date: pm.event.event_date },
+        }))} />
 
       <CalendarView initialEvents={calendarEvents} bandSlug={bandSlug} />
     </div>
