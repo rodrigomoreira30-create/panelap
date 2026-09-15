@@ -8,6 +8,9 @@ export type FinanceItemData = {
   amount: number
   paid: boolean
   notes: string | null
+  percent_of_revenue: number | null
+  is_overridden: boolean
+  event_musician_id: string | null
 }
 
 export type EventFinanceData = {
@@ -23,6 +26,8 @@ export type EventFinanceData = {
   items: FinanceItemData[]
 }
 
+export const CACHE_MUSICO_CATEGORY = 'cache_musico'
+
 export const DEFAULT_FINANCE_ITEMS: { category: string; label: string }[] = [
   { category: 'pro_labore',        label: 'Pró-labore' },
   { category: 'comissao_panel',    label: 'Comissão Panel' },
@@ -33,21 +38,18 @@ export const DEFAULT_FINANCE_ITEMS: { category: string; label: string }[] = [
   { category: 'alimentacao_extra', label: 'Alimentação extra' },
   { category: 'transporte',        label: 'Transporte' },
   { category: 'hospedagem',        label: 'Hospedagem' },
-  { category: 'cantor_1',          label: 'Cantor 1' },
-  { category: 'cantor_2',          label: 'Cantor 2' },
-  { category: 'cantor_3',          label: 'Cantor 3' },
-  { category: 'cantor_4',          label: 'Cantor 4' },
-  { category: 'guitarrista',       label: 'Guitarrista' },
-  { category: 'baixista',          label: 'Baixista' },
-  { category: 'baterista',         label: 'Bateria' },
-  { category: 'tecladista',        label: 'Teclado' },
-  { category: 'percussao',         label: 'Percussão' },
-  { category: 'sanfoneiro',        label: 'Sanfoneiro' },
-  { category: 'dj',                label: 'DJ' },
-  { category: 'tecnico_som',       label: 'Técnico de som' },
-  { category: 'tecnico_luz',       label: 'Técnico de luz' },
   { category: 'outros',            label: 'Outros custos' },
 ]
+
+export const PERCENT_ELIGIBLE_CATEGORIES = new Set([
+  'comissao_panel',
+  'comissao_vendedor',
+  'nota_fiscal',
+])
+
+export function round2(n: number): number {
+  return Math.round((n + Number.EPSILON) * 100) / 100
+}
 
 export function serializeFinance(f: any): EventFinanceData {
   return {
@@ -61,13 +63,18 @@ export function serializeFinance(f: any): EventFinanceData {
     received_amount:  parseFloat(f.received_amount.toString()),
     notes:            f.notes ?? null,
     items: (f.items ?? []).map((i: any) => ({
-      id:         i.id,
-      finance_id: i.finance_id,
-      category:   i.category,
-      label:      i.label,
-      amount:     parseFloat(i.amount.toString()),
-      paid:       i.paid,
-      notes:      i.notes ?? null,
+      id:                 i.id,
+      finance_id:         i.finance_id,
+      category:           i.category,
+      label:              i.label,
+      amount:             parseFloat(i.amount.toString()),
+      paid:               i.paid,
+      notes:              i.notes ?? null,
+      percent_of_revenue: i.percent_of_revenue !== null && i.percent_of_revenue !== undefined
+        ? parseFloat(i.percent_of_revenue.toString())
+        : null,
+      is_overridden:      i.is_overridden ?? false,
+      event_musician_id:  i.event_musician_id ?? null,
     })),
   }
 }
@@ -80,8 +87,55 @@ export function calcTotals(finances: EventFinanceData[]) {
   const totalRevenue   = finances.reduce((s, f) => s + f.expected_revenue, 0)
   const totalReceived  = finances.reduce((s, f) => s + f.received_amount, 0)
   const totalToReceive = totalRevenue - totalReceived
-  const totalCosts     = finances.reduce((s, f) => s + f.items.reduce((si, i) => si + i.amount, 0), 0)
+  const totalCosts     = finances.reduce(
+    (s, f) => s + computeEventFinance(f).costTotal, 0
+  )
   const totalProfit    = totalRevenue - totalCosts
   const margin         = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0
   return { totalRevenue, totalReceived, totalToReceive, totalCosts, totalProfit, margin }
+}
+
+/** Valor "vivo" de um item: se tem percentual e não foi sobrescrito manualmente, é
+ * sempre recalculado a partir da receita prevista; senão, usa o valor gravado. */
+export function resolveItemAmount(item: FinanceItemData, revenueForecast: number): number {
+  if (item.percent_of_revenue !== null && !item.is_overridden) {
+    return round2((revenueForecast * item.percent_of_revenue) / 100)
+  }
+  return item.amount
+}
+
+export type EventFinanceTotals = {
+  revenueForecast: number
+  received: number
+  receivable: number
+  costTotal: number
+  costByCategory: Record<string, number>
+  profit: number
+  marginPercent: number | null
+  cashProfit: number
+}
+
+export function computeEventFinance(finance: EventFinanceData): EventFinanceTotals {
+  const revenueForecast = finance.expected_revenue
+  const received        = finance.received_amount
+  const receivable       = round2(revenueForecast - received)
+
+  const costByCategory: Record<string, number> = {}
+  let costTotal = 0
+  let paidCostTotal = 0
+
+  for (const item of finance.items) {
+    const amount = resolveItemAmount(item, revenueForecast)
+    costByCategory[item.category] = round2((costByCategory[item.category] ?? 0) + amount)
+    costTotal += amount
+    if (item.paid) paidCostTotal += amount
+  }
+  costTotal = round2(costTotal)
+  paidCostTotal = round2(paidCostTotal)
+
+  const profit = round2(revenueForecast - costTotal)
+  const marginPercent = revenueForecast === 0 ? null : round2((profit / revenueForecast) * 100)
+  const cashProfit = round2(received - paidCostTotal)
+
+  return { revenueForecast, received, receivable, costTotal, costByCategory, profit, marginPercent, cashProfit }
 }
