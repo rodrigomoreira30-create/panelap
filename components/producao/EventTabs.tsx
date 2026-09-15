@@ -9,6 +9,7 @@ import { EventAttractionsEditor } from './EventAttractionsEditor'
 import { EventDetailClient } from './EventDetailClient'
 import { EventDocuments } from './EventDocuments'
 import { EventAlignmentNotes } from './EventAlignmentNotes'
+import { EventFinanceTab } from './EventFinanceTab'
 
 const eventTypeLabels: Record<string, string> = {
   wedding: 'Casamento', party: 'Festa', show: 'Show',
@@ -212,7 +213,7 @@ export function EventTabs({
           <EventDocuments eventId={eventoId} initialDocs={initialDocs} />
         )}
 
-        {tab === 'financeiro' && <PlaceholderTab label="Financeiro" />}
+        {tab === 'financeiro' && <EventFinanceTab eventoId={eventoId} />}
         {tab === 'tarefas'    && <PlaceholderTab label="Tarefas" />}
         {tab === 'chat'       && <PlaceholderTab label="Chat" />}
       </div>
