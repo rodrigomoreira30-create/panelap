@@ -9,8 +9,7 @@
     "lint": "next lint",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:ui": "vitest --ui",
-    "check:orphan-finance": "tsx scripts/migrate-orphan-finance.ts"
+    "test:ui": "vitest --ui"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.99.0",
