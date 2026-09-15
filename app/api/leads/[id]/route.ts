@@ -115,10 +115,11 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
+  const force = new URL(request.url).searchParams.get('force') === 'true'
   const sessionUser = await getSessionUser()
   if (!sessionUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -133,7 +134,20 @@ export async function DELETE(
 
   try {
     // Apaga evento vinculado (e em cascata: contratos, checklists, músicos)
-    const event = await prisma.event.findUnique({ where: { lead_id: id } })
+    const event = await prisma.event.findUnique({
+      where: { lead_id: id },
+      include: { finance: { include: { items: true } } },
+    })
+    if (event?.finance) {
+      const received = parseFloat(event.finance.received_amount.toString())
+      const hasPaidItems = event.finance.items.some(i => i.paid)
+      if ((received > 0 || hasPaidItems) && !force) {
+        return NextResponse.json({
+          error: 'Este evento tem valores recebidos ou custos pagos no financeiro. Confirme a exclusão para apagar esses dados junto.',
+          requiresConfirmation: true,
+        }, { status: 409 })
+      }
+    }
     if (event) {
       await prisma.document.deleteMany({ where: { event_id: event.id } })
       await prisma.event.delete({ where: { id: event.id } })
