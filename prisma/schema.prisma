@@ -241,8 +241,9 @@ model EventMusician {
   confirmed_at DateTime?
   cache_value  Decimal?
 
-  event Event  @relation(fields: [event_id], references: [id], onDelete: Cascade)
-  user  User?  @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  event         Event              @relation(fields: [event_id], references: [id], onDelete: Cascade)
+  user          User?              @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  finance_items EventFinanceItem[]
 
   @@index([event_id])
 }
@@ -318,7 +319,7 @@ model LeadAttraction {
 model EventFinance {
   id               String   @id @default(cuid())
   band_id          String
-  event_id         String?  @unique
+  event_id         String   @unique
   name             String
   client           String?
   product          String?
@@ -330,23 +331,28 @@ model EventFinance {
   updated_at       DateTime @updatedAt
 
   band  Band              @relation(fields: [band_id], references: [id], onDelete: Cascade)
-  event Event?            @relation(fields: [event_id], references: [id], onDelete: SetNull)
+  event Event             @relation(fields: [event_id], references: [id], onDelete: Cascade)
   items EventFinanceItem[]
 
   @@index([band_id, event_date])
 }
 
 model EventFinanceItem {
-  id         String   @id @default(cuid())
-  finance_id String
-  category   String
-  label      String
-  amount     Decimal  @default(0)
-  paid       Boolean  @default(false)
-  notes      String?
-  created_at DateTime @default(now())
+  id                 String   @id @default(cuid())
+  finance_id         String
+  category           String
+  label              String
+  amount             Decimal  @default(0)
+  paid               Boolean  @default(false)
+  notes              String?
+  percent_of_revenue Decimal? @db.Decimal(5, 2)
+  is_overridden      Boolean  @default(false)
+  event_musician_id  String?
+  created_at         DateTime @default(now())
 
-  finance EventFinance @relation(fields: [finance_id], references: [id], onDelete: Cascade)
+  finance        EventFinance   @relation(fields: [finance_id], references: [id], onDelete: Cascade)
+  event_musician EventMusician? @relation(fields: [event_musician_id], references: [id], onDelete: SetNull)
 
   @@index([finance_id])
+  @@index([event_musician_id])
 }
