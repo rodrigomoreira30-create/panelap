@@ -1,8 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { Trash2, Plus } from 'lucide-react'
-import { FinanceCell } from './FinanceCell'
+import { useRouter, useParams } from 'next/navigation'
+import { Trash2 } from 'lucide-react'
 import { fmt, DEFAULT_FINANCE_ITEMS, type EventFinanceData } from '@/lib/financas'
 
 interface FinanceTableProps {
@@ -19,70 +18,19 @@ function calcShowTotals(f: EventFinanceData) {
   return { saldo, totalCosts, lucroPrevi, lucroReal }
 }
 
-export function FinanceTable({ finances, onFinanceUpdated, onFinanceDeleted }: FinanceTableProps) {
-  const [newItemLabels, setNewItemLabels] = useState<Record<string, string>>({})
-  const [addingFor, setAddingFor] = useState<string | null>(null)
+export function FinanceTable({ finances, onFinanceDeleted }: FinanceTableProps) {
+  const router = useRouter()
+  const { bandSlug } = useParams<{ bandSlug: string }>()
 
-  async function patchFinance(id: string, patch: Record<string, unknown>) {
-    const res = await fetch(`/api/financas/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(patch),
-    })
-    if (res.ok) {
-      const { data } = await res.json()
-      onFinanceUpdated(data)
-    }
-  }
-
-  async function patchItem(financeId: string, itemId: string, patch: Record<string, unknown>) {
-    const res = await fetch(`/api/financas/${financeId}/items/${itemId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(patch),
-    })
-    if (res.ok) {
-      const { data: updatedItem } = await res.json()
-      const finance = finances.find(f => f.id === financeId)
-      if (!finance) return
-      onFinanceUpdated({
-        ...finance,
-        items: finance.items.map(i => i.id === itemId ? { ...i, ...updatedItem } : i),
-      })
-    }
+  function openEvent(financeEventId: string | null) {
+    if (!financeEventId) return
+    router.push(`/${bandSlug}/producao/${financeEventId}?tab=financeiro`)
   }
 
   async function deleteFinance(id: string) {
-    if (!confirm('Excluir este show financeiro e todos os seus dados?')) return
+    if (!confirm('Remover o registro financeiro deste evento? O evento em si não será apagado.')) return
     const res = await fetch(`/api/financas/${id}`, { method: 'DELETE' })
     if (res.ok) onFinanceDeleted(id)
-  }
-
-  async function addCustomItem(financeId: string) {
-    const label = (newItemLabels[financeId] ?? '').trim()
-    if (!label) return
-    const res = await fetch(`/api/financas/${financeId}/items`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ category: 'custom', label, amount: 0 }),
-    })
-    if (res.ok) {
-      const { data: newItem } = await res.json()
-      const finance = finances.find(f => f.id === financeId)
-      if (!finance) return
-      onFinanceUpdated({ ...finance, items: [...finance.items, newItem] })
-      setNewItemLabels(prev => ({ ...prev, [financeId]: '' }))
-      setAddingFor(null)
-    }
-  }
-
-  async function deleteItem(financeId: string, itemId: string) {
-    const res = await fetch(`/api/financas/${financeId}/items/${itemId}`, { method: 'DELETE' })
-    if (res.ok) {
-      const finance = finances.find(f => f.id === financeId)
-      if (!finance) return
-      onFinanceUpdated({ ...finance, items: finance.items.filter(i => i.id !== itemId) })
-    }
   }
 
   const stdCategories = new Set(DEFAULT_FINANCE_ITEMS.map(d => d.category))
@@ -109,7 +57,7 @@ export function FinanceTable({ finances, onFinanceUpdated, onFinanceDeleted }: F
                     <button
                       onClick={() => deleteFinance(f.id)}
                       className="text-gray-300 hover:text-red-500 mt-1 transition-colors"
-                      title="Excluir show"
+                      title="Remover financeiro deste evento"
                     >
                       <Trash2 size={12} />
                     </button>
@@ -127,8 +75,14 @@ export function FinanceTable({ finances, onFinanceUpdated, onFinanceDeleted }: F
           <tr className="border-b hover:bg-gray-50">
             <td className="px-3 py-2 sticky left-0 bg-white text-gray-700 font-medium z-10">Receita prevista</td>
             {finances.map(f => (
-              <FinanceCell key={f.id} value={f.expected_revenue} colorClass="text-green-700"
-                onSave={v => patchFinance(f.id, { expected_revenue: v })} />
+              <td
+                key={f.id}
+                onClick={() => openEvent(f.event_id)}
+                className="px-3 py-2 text-right text-xs font-medium tabular-nums text-green-700 cursor-pointer hover:bg-gray-100"
+                title="Abrir evento"
+              >
+                {fmt(f.expected_revenue)}
+              </td>
             ))}
             <td className="px-3 py-2 text-right font-semibold text-green-700 tabular-nums bg-gray-50">
               {fmt(finances.reduce((s, f) => s + f.expected_revenue, 0))}
@@ -139,8 +93,14 @@ export function FinanceTable({ finances, onFinanceUpdated, onFinanceDeleted }: F
           <tr className="border-b hover:bg-gray-50">
             <td className="px-3 py-2 sticky left-0 bg-white text-gray-700 font-medium z-10">Valor recebido</td>
             {finances.map(f => (
-              <FinanceCell key={f.id} value={f.received_amount} colorClass="text-green-600"
-                onSave={v => patchFinance(f.id, { received_amount: v })} />
+              <td
+                key={f.id}
+                onClick={() => openEvent(f.event_id)}
+                className="px-3 py-2 text-right text-xs font-medium tabular-nums text-green-600 cursor-pointer hover:bg-gray-100"
+                title="Abrir evento"
+              >
+                {fmt(f.received_amount)}
+              </td>
             ))}
             <td className="px-3 py-2 text-right font-semibold text-green-600 tabular-nums bg-gray-50">
               {fmt(finances.reduce((s, f) => s + f.received_amount, 0))}
@@ -151,8 +111,14 @@ export function FinanceTable({ finances, onFinanceUpdated, onFinanceDeleted }: F
           <tr className="border-b bg-blue-50/60">
             <td className="px-3 py-2 sticky left-0 bg-blue-50 text-blue-700 font-medium z-10">Saldo a receber</td>
             {finances.map(f => (
-              <FinanceCell key={f.id} value={calcShowTotals(f).saldo} readOnly colorClass="text-blue-600"
-                onSave={async () => {}} />
+              <td
+                key={f.id}
+                onClick={() => openEvent(f.event_id)}
+                className="px-3 py-2 text-right text-xs font-medium tabular-nums text-blue-600 cursor-pointer hover:bg-gray-100"
+                title="Abrir evento"
+              >
+                {fmt(calcShowTotals(f).saldo)}
+              </td>
             ))}
             <td className="px-3 py-2 text-right font-semibold text-blue-600 tabular-nums bg-blue-50">
               {fmt(finances.reduce((s, f) => s + calcShowTotals(f).saldo, 0))}
@@ -172,13 +138,29 @@ export function FinanceTable({ finances, onFinanceUpdated, onFinanceDeleted }: F
               <td className="px-3 py-2 sticky left-0 bg-white text-gray-600 z-10">{def.label}</td>
               {finances.map(f => {
                 const item = f.items.find(i => i.category === def.category)
-                if (!item) return <td key={f.id} className="px-3 py-2 text-right text-gray-300">—</td>
+                if (!item) {
+                  return (
+                    <td
+                      key={f.id}
+                      onClick={() => openEvent(f.event_id)}
+                      className="px-3 py-2 text-right text-gray-300 cursor-pointer hover:bg-gray-100"
+                      title="Abrir evento"
+                    >
+                      —
+                    </td>
+                  )
+                }
                 return (
-                  <FinanceCell key={f.id} value={item.amount}
-                    colorClass={item.amount > 0 ? 'text-red-600' : 'text-gray-400'}
-                    paid={item.paid}
-                    onPaidToggle={() => patchItem(f.id, item.id, { paid: !item.paid })}
-                    onSave={v => patchItem(f.id, item.id, { amount: v })} />
+                  <td
+                    key={f.id}
+                    onClick={() => openEvent(f.event_id)}
+                    className={`px-3 py-2 text-right text-xs font-medium tabular-nums cursor-pointer hover:bg-gray-100 ${
+                      item.paid ? 'text-green-600' : item.amount > 0 ? 'text-red-600' : 'text-gray-400'
+                    }`}
+                    title="Abrir evento"
+                  >
+                    {fmt(item.amount)}
+                  </td>
                 )
               })}
               <td className="px-3 py-2 text-right text-red-600 tabular-nums bg-gray-50">
@@ -204,21 +186,21 @@ export function FinanceTable({ finances, onFinanceUpdated, onFinanceDeleted }: F
                   .map(item => (
                     <tr key={item.id} className="border-b hover:bg-gray-50">
                       <td className="px-3 py-2 sticky left-0 bg-white text-gray-600 z-10">
-                        <div className="flex items-center gap-1">
-                          <span>{item.label}</span>
-                          <button onClick={() => deleteItem(f.id, item.id)}
-                            className="text-gray-300 hover:text-red-500 transition-colors shrink-0">
-                            <Trash2 size={11} />
-                          </button>
-                        </div>
+                        {item.label}
                       </td>
                       {finances.map(fCol => {
                         if (fCol.id !== f.id) return <td key={fCol.id} className="px-3 py-2" />
                         return (
-                          <FinanceCell key={fCol.id} value={item.amount} colorClass="text-red-600"
-                            paid={item.paid}
-                            onPaidToggle={() => patchItem(f.id, item.id, { paid: !item.paid })}
-                            onSave={v => patchItem(f.id, item.id, { amount: v })} />
+                          <td
+                            key={fCol.id}
+                            onClick={() => openEvent(f.event_id)}
+                            className={`px-3 py-2 text-right text-xs font-medium tabular-nums cursor-pointer hover:bg-gray-100 ${
+                              item.paid ? 'text-green-600' : 'text-red-600'
+                            }`}
+                            title="Abrir evento"
+                          >
+                            {fmt(item.amount)}
+                          </td>
                         )
                       })}
                       <td className="bg-gray-50" />
@@ -227,38 +209,6 @@ export function FinanceTable({ finances, onFinanceUpdated, onFinanceDeleted }: F
               )}
             </>
           )}
-
-          {/* Adicionar custo */}
-          <tr className="border-b">
-            <td colSpan={finances.length + 2} className="px-3 py-2 sticky left-0">
-              <div className="flex gap-3 flex-wrap">
-                {finances.map(f => (
-                  <div key={f.id} className="flex items-center gap-1">
-                    {addingFor === f.id ? (
-                      <>
-                        <input
-                          autoFocus
-                          type="text"
-                          placeholder="Nome do custo"
-                          value={newItemLabels[f.id] ?? ''}
-                          onChange={e => setNewItemLabels(prev => ({ ...prev, [f.id]: e.target.value }))}
-                          onKeyDown={e => { if (e.key === 'Enter') addCustomItem(f.id) }}
-                          className="text-xs border rounded px-2 py-1 w-36"
-                        />
-                        <button onClick={() => addCustomItem(f.id)} className="text-xs text-green-600 font-medium">OK</button>
-                        <button onClick={() => setAddingFor(null)} className="text-xs text-gray-400">✕</button>
-                      </>
-                    ) : (
-                      <button onClick={() => setAddingFor(f.id)}
-                        className="text-xs text-indigo-500 hover:text-indigo-700 flex items-center gap-1 whitespace-nowrap">
-                        <Plus size={12} /> {f.name.length > 12 ? f.name.slice(0, 12) + '…' : f.name}
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </td>
-          </tr>
 
           {/* Total Custos */}
           <tr className="bg-red-50/60 border-b">
