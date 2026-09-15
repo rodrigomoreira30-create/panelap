@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { DEFAULT_FINANCE_ITEMS, CACHE_MUSICO_CATEGORY } from '@/lib/financas'
+import { Prisma } from '@/lib/generated/prisma/client'
 
 export async function getOrCreateEventFinance(eventId: string) {
   const existing = await prisma.eventFinance.findUnique({
@@ -10,28 +11,40 @@ export async function getOrCreateEventFinance(eventId: string) {
 
   const event = await prisma.event.findUniqueOrThrow({ where: { id: eventId } })
 
-  return prisma.eventFinance.create({
-    data: {
-      band_id:          event.band_id,
-      event_id:         eventId,
-      name:             event.client_name,
-      client:           event.client_name,
-      event_date:       event.event_date,
-      expected_revenue: event.value,
-      received_amount:  0,
-      items: {
-        createMany: {
-          data: DEFAULT_FINANCE_ITEMS.map(item => ({
-            category: item.category,
-            label:    item.label,
-            amount:   0,
-            paid:     false,
-          })),
+  try {
+    return await prisma.eventFinance.create({
+      data: {
+        band_id:          event.band_id,
+        event_id:         eventId,
+        name:             event.client_name,
+        client:           event.client_name,
+        event_date:       event.event_date,
+        expected_revenue: event.value,
+        received_amount:  0,
+        items: {
+          createMany: {
+            data: DEFAULT_FINANCE_ITEMS.map(item => ({
+              category: item.category,
+              label:    item.label,
+              amount:   0,
+              paid:     false,
+            })),
+          },
         },
       },
-    },
-    include: { items: { orderBy: { created_at: 'asc' } } },
-  })
+      include: { items: { orderBy: { created_at: 'asc' } } },
+    })
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      // Corrida concorrente: outra chamada já criou o registro (ex.: duas abas,
+      // refetch-on-focus) — lê o que foi criado em vez de propagar o erro.
+      return prisma.eventFinance.findUniqueOrThrow({
+        where: { event_id: eventId },
+        include: { items: { orderBy: { created_at: 'asc' } } },
+      })
+    }
+    throw err
+  }
 }
 
 function musicianLabel(instrument: string | null, userName: string | null): string {
