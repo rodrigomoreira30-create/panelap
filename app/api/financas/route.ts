@@ -28,43 +28,38 @@ export async function POST(request: Request) {
   if (!sessionUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()
-  const { event_id, name, client, product, event_date } = body
+  const { event_id, product } = body
 
-  let finalName: string    = name ?? ''
-  let finalClient: string | null  = client ?? null
-  let finalDate: Date      = event_date ? new Date(event_date) : new Date()
-  let finalRevenue: number = 0
-
-  if (event_id) {
-    const event = await prisma.event.findFirst({
-      where: { id: event_id, band_id: sessionUser.band_id },
-      include: { lead: { include: { lead_attractions: true } } },
-    })
-    if (!event) return NextResponse.json({ error: 'Evento não encontrado' }, { status: 404 })
-
-    const existingFinance = await prisma.eventFinance.findUnique({ where: { event_id } })
-    if (existingFinance) return NextResponse.json({ error: 'Evento já possui registro financeiro' }, { status: 409 })
-
-    const attractionsTotal = (event.lead?.lead_attractions ?? []).reduce(
-      (s, a) => s + parseFloat(a.custom_value.toString()), 0
+  if (!event_id) {
+    return NextResponse.json(
+      { error: 'event_id obrigatório — todo registro financeiro precisa estar vinculado a um evento' },
+      { status: 422 }
     )
-    const discount = parseFloat((event.lead?.proposal_discount ?? 0).toString())
-    finalName    = event.client_name
-    finalClient  = event.client_name
-    finalDate    = event.event_date
-    finalRevenue = Math.max(0, attractionsTotal - discount)
   }
 
-  if (!finalName) return NextResponse.json({ error: 'Nome obrigatório' }, { status: 422 })
+  const event = await prisma.event.findFirst({
+    where: { id: event_id, band_id: sessionUser.band_id },
+    include: { lead: { include: { lead_attractions: true } } },
+  })
+  if (!event) return NextResponse.json({ error: 'Evento não encontrado' }, { status: 404 })
+
+  const existingFinance = await prisma.eventFinance.findUnique({ where: { event_id } })
+  if (existingFinance) return NextResponse.json({ error: 'Evento já possui registro financeiro' }, { status: 409 })
+
+  const attractionsTotal = (event.lead?.lead_attractions ?? []).reduce(
+    (s, a) => s + parseFloat(a.custom_value.toString()), 0
+  )
+  const discount = parseFloat((event.lead?.proposal_discount ?? 0).toString())
+  const finalRevenue = Math.max(0, attractionsTotal - discount)
 
   const finance = await prisma.eventFinance.create({
     data: {
       band_id:          sessionUser.band_id,
-      event_id:         event_id ?? null,
-      name:             finalName,
-      client:           finalClient,
+      event_id,
+      name:             event.client_name,
+      client:           event.client_name,
       product:          product ?? null,
-      event_date:       finalDate,
+      event_date:       event.event_date,
       expected_revenue: finalRevenue,
       received_amount:  0,
       items: {
