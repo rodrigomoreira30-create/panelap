@@ -126,8 +126,6 @@ export function FinancasClient({
       {showModal && (
         <AddShowModal
           availableEvents={availableEvents}
-          month={month}
-          year={year}
           onAdded={handleFinanceAdded}
           onClose={() => setShowModal(false)}
         />
