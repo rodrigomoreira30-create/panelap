@@ -62,7 +62,7 @@ export async function POST(request: Request) {
     include: { user: { select: { id: true, name: true, avatar_url: true, schedule_token: true } } },
   })
 
-  await syncMusicianCost(em.id)
+  syncMusicianCost(em.id).catch(err => console.error('[financas] Falha ao sincronizar custo de cachê:', err))
 
   if (musician) {
     sendEventInviteEmail({
@@ -116,7 +116,7 @@ export async function PATCH(request: Request) {
   })
 
   if ('cache_value' in parsed.data) {
-    await syncMusicianCost(updated.id)
+    syncMusicianCost(updated.id).catch(err => console.error('[financas] Falha ao sincronizar custo de cachê:', err))
   }
 
   if (wasVacant && isBeingAssigned && musician) {
