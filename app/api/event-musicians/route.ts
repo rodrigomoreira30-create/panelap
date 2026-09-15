@@ -3,6 +3,7 @@ import { getSessionUser } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { sendEventInviteEmail } from '@/lib/email'
+import { syncMusicianCost, removeMusicianCost } from '@/lib/finance-service'
 
 const addSchema = z.object({
   event_id:    z.string().cuid(),
@@ -61,6 +62,8 @@ export async function POST(request: Request) {
     include: { user: { select: { id: true, name: true, avatar_url: true, schedule_token: true } } },
   })
 
+  await syncMusicianCost(em.id)
+
   if (musician) {
     sendEventInviteEmail({
       to:            musician.email,
@@ -112,6 +115,10 @@ export async function PATCH(request: Request) {
     include: { user: { select: { id: true, name: true, avatar_url: true, schedule_token: true } } },
   })
 
+  if ('cache_value' in parsed.data) {
+    await syncMusicianCost(updated.id)
+  }
+
   if (wasVacant && isBeingAssigned && musician) {
     sendEventInviteEmail({
       to:            musician.email,
@@ -131,6 +138,7 @@ export async function DELETE(request: Request) {
 
   const { searchParams } = new URL(request.url)
   const id = searchParams.get('id')
+  const force = searchParams.get('force') === 'true'
   if (!id) return NextResponse.json({ error: 'id obrigatório' }, { status: 400 })
 
   const em = await prisma.eventMusician.findUnique({
@@ -139,6 +147,14 @@ export async function DELETE(request: Request) {
   })
   if (!em || em.event.band_id !== sessionUser.band_id) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
+  const { blocked } = await removeMusicianCost(id, force)
+  if (blocked) {
+    return NextResponse.json({
+      error: 'Este músico já tem um custo de cachê marcado como pago no financeiro do evento. Confirme a remoção para apagar o custo junto.',
+      requiresConfirmation: true,
+    }, { status: 409 })
   }
 
   await prisma.eventMusician.delete({ where: { id } })

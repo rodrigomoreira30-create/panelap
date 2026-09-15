@@ -20,6 +20,11 @@ vi.mock('@/lib/prisma', () => ({
   },
 }))
 
+vi.mock('@/lib/finance-service', () => ({
+  syncMusicianCost: vi.fn(),
+  removeMusicianCost: vi.fn().mockResolvedValue({ blocked: false }),
+}))
+
 function makeRequest(method: string, url: string, body?: unknown): Request {
   return new Request(url, {
     method,
