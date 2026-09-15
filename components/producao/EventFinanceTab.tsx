@@ -8,6 +8,7 @@ import {
   DEFAULT_FINANCE_ITEMS,
   PERCENT_ELIGIBLE_CATEGORIES,
   CACHE_MUSICO_CATEGORY,
+  resolveItemAmount,
   type EventFinanceData,
   type EventFinanceTotals,
 } from '@/lib/financas'
@@ -53,17 +54,26 @@ function CurrencyInput({
 }
 
 function useAutosave() {
-  const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const timers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+  const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  function trigger(fn: () => Promise<void>) {
+  function trigger(key: string, fn: () => Promise<boolean>) {
     setStatus('saving')
-    if (timer.current) clearTimeout(timer.current)
-    timer.current = setTimeout(async () => {
-      await fn()
-      setStatus('saved')
-      timer.current = setTimeout(() => setStatus('idle'), 1500)
+    const existing = timers.current.get(key)
+    if (existing) clearTimeout(existing)
+    const t = setTimeout(async () => {
+      timers.current.delete(key)
+      const ok = await fn()
+      if (timers.current.size === 0) {
+        setStatus(ok ? 'saved' : 'error')
+        if (idleTimer.current) clearTimeout(idleTimer.current)
+        if (ok) {
+          idleTimer.current = setTimeout(() => setStatus('idle'), 1500)
+        }
+      }
     }, 600)
+    timers.current.set(key, t)
   }
 
   return { status, trigger }
@@ -80,24 +90,35 @@ export function EventFinanceTab({ eventoId }: { eventoId: string }) {
   })
 
   async function patchFinance(patch: Record<string, unknown>) {
-    trigger(async () => {
-      const res = await fetch(`/api/financas/${data!.data.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(patch),
-      })
-      if (res.ok) queryClient.invalidateQueries({ queryKey })
+    const key = `finance:${Object.keys(patch).join(',')}`
+    trigger(key, async () => {
+      try {
+        const res = await fetch(`/api/financas/${data!.data.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(patch),
+        })
+        if (res.ok) queryClient.invalidateQueries({ queryKey })
+        return res.ok
+      } catch {
+        return false
+      }
     })
   }
 
   async function patchItem(itemId: string, patch: Record<string, unknown>) {
-    trigger(async () => {
-      const res = await fetch(`/api/financas/${data!.data.id}/items/${itemId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(patch),
-      })
-      if (res.ok) queryClient.invalidateQueries({ queryKey })
+    trigger(itemId, async () => {
+      try {
+        const res = await fetch(`/api/financas/${data!.data.id}/items/${itemId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(patch),
+        })
+        if (res.ok) queryClient.invalidateQueries({ queryKey })
+        return res.ok
+      } catch {
+        return false
+      }
     })
   }
 
@@ -134,6 +155,7 @@ export function EventFinanceTab({ eventoId }: { eventoId: string }) {
         <span className="text-xs text-gray-400">
           {status === 'saving' && 'Salvando...'}
           {status === 'saved' && 'Salvo'}
+          {status === 'error' && <span className="text-red-500">Erro ao salvar</span>}
         </span>
       </div>
 
@@ -183,12 +205,19 @@ export function EventFinanceTab({ eventoId }: { eventoId: string }) {
             {musicianItems.map(item => (
               <div key={item.id} className="flex items-center justify-between border rounded-md px-3 py-2">
                 <div className="flex items-center gap-2">
-                  <button onClick={() => patchItem(item.id, { paid: !item.paid })} title={item.paid ? 'Marcar como não pago' : 'Marcar como pago'}>
+                  <button
+                    onClick={() => patchItem(item.id, { paid: !item.paid })}
+                    title={item.paid ? 'Marcar como não pago' : 'Marcar como pago'}
+                    aria-label={item.paid ? 'Marcar como não pago' : 'Marcar como pago'}
+                  >
                     {item.paid ? <CheckCircle2 size={16} className="text-green-500" /> : <Circle size={16} className="text-gray-300" />}
                   </button>
                   <span className="text-sm text-gray-700">{item.label}</span>
                 </div>
-                <CurrencyInput value={item.amount} onCommit={v => patchItem(item.id, { amount: v })} />
+                <CurrencyInput
+                  value={resolveItemAmount(item, finance.expected_revenue)}
+                  onCommit={v => patchItem(item.id, { amount: v })}
+                />
               </div>
             ))}
           </div>
@@ -204,10 +233,17 @@ export function EventFinanceTab({ eventoId }: { eventoId: string }) {
           {otherItems.map(({ def, item }) => {
             const percentEligible = PERCENT_ELIGIBLE_CATEGORIES.has(def.category)
             return (
-              <div key={def.category} className="flex items-center justify-between border rounded-md px-3 py-2 gap-3">
+              <div
+                key={`${def.category}:${item?.percent_of_revenue ?? 'none'}`}
+                className="flex items-center justify-between border rounded-md px-3 py-2 gap-3"
+              >
                 <div className="flex items-center gap-2 flex-1">
                   {item && (
-                    <button onClick={() => patchItem(item.id, { paid: !item.paid })} title={item.paid ? 'Marcar como não pago' : 'Marcar como pago'}>
+                    <button
+                      onClick={() => patchItem(item.id, { paid: !item.paid })}
+                      title={item.paid ? 'Marcar como não pago' : 'Marcar como pago'}
+                      aria-label={item.paid ? 'Marcar como não pago' : 'Marcar como pago'}
+                    >
                       {item.paid ? <CheckCircle2 size={16} className="text-green-500" /> : <Circle size={16} className="text-gray-300" />}
                     </button>
                   )}
@@ -229,7 +265,12 @@ export function EventFinanceTab({ eventoId }: { eventoId: string }) {
                     />
                   </label>
                 )}
-                {item && <CurrencyInput value={item.amount} onCommit={v => patchItem(item.id, { amount: v })} />}
+                {item && (
+                  <CurrencyInput
+                    value={resolveItemAmount(item, finance.expected_revenue)}
+                    onCommit={v => patchItem(item.id, { amount: v })}
+                  />
+                )}
               </div>
             )
           })}
