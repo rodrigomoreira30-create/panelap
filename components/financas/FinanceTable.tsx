@@ -2,20 +2,12 @@
 
 import { useRouter, useParams } from 'next/navigation'
 import { Trash2 } from 'lucide-react'
-import { fmt, DEFAULT_FINANCE_ITEMS, type EventFinanceData } from '@/lib/financas'
+import { fmt, DEFAULT_FINANCE_ITEMS, computeEventFinance, resolveItemAmount, type EventFinanceData } from '@/lib/financas'
 
 interface FinanceTableProps {
   finances: EventFinanceData[]
   onFinanceUpdated: (f: EventFinanceData) => void
   onFinanceDeleted: (id: string) => void
-}
-
-function calcShowTotals(f: EventFinanceData) {
-  const saldo      = f.expected_revenue - f.received_amount
-  const totalCosts = f.items.reduce((s, i) => s + i.amount, 0)
-  const lucroPrevi = f.expected_revenue - totalCosts
-  const lucroReal  = f.received_amount - f.items.filter(i => i.paid).reduce((s, i) => s + i.amount, 0)
-  return { saldo, totalCosts, lucroPrevi, lucroReal }
 }
 
 export function FinanceTable({ finances, onFinanceDeleted }: FinanceTableProps) {
@@ -117,11 +109,11 @@ export function FinanceTable({ finances, onFinanceDeleted }: FinanceTableProps) 
                 className="px-3 py-2 text-right text-xs font-medium tabular-nums text-blue-600 cursor-pointer hover:bg-gray-100"
                 title="Abrir evento"
               >
-                {fmt(calcShowTotals(f).saldo)}
+                {fmt(computeEventFinance(f).receivable)}
               </td>
             ))}
             <td className="px-3 py-2 text-right font-semibold text-blue-600 tabular-nums bg-blue-50">
-              {fmt(finances.reduce((s, f) => s + calcShowTotals(f).saldo, 0))}
+              {fmt(finances.reduce((s, f) => s + computeEventFinance(f).receivable, 0))}
             </td>
           </tr>
 
@@ -150,23 +142,24 @@ export function FinanceTable({ finances, onFinanceDeleted }: FinanceTableProps) 
                     </td>
                   )
                 }
+                const resolved = resolveItemAmount(item, f.expected_revenue)
                 return (
                   <td
                     key={f.id}
                     onClick={() => openEvent(f.event_id)}
                     className={`px-3 py-2 text-right text-xs font-medium tabular-nums cursor-pointer hover:bg-gray-100 ${
-                      item.paid ? 'text-green-600' : item.amount > 0 ? 'text-red-600' : 'text-gray-400'
+                      item.paid ? 'text-green-600' : resolved > 0 ? 'text-red-600' : 'text-gray-400'
                     }`}
                     title="Abrir evento"
                   >
-                    {fmt(item.amount)}
+                    {fmt(resolved)}
                   </td>
                 )
               })}
               <td className="px-3 py-2 text-right text-red-600 tabular-nums bg-gray-50">
                 {fmt(finances.reduce((s, f) => {
                   const item = f.items.find(i => i.category === def.category)
-                  return s + (item?.amount ?? 0)
+                  return s + (item ? resolveItemAmount(item, f.expected_revenue) : 0)
                 }, 0))}
               </td>
             </tr>
@@ -190,6 +183,7 @@ export function FinanceTable({ finances, onFinanceDeleted }: FinanceTableProps) 
                       </td>
                       {finances.map(fCol => {
                         if (fCol.id !== f.id) return <td key={fCol.id} className="px-3 py-2" />
+                        const resolved = resolveItemAmount(item, f.expected_revenue)
                         return (
                           <td
                             key={fCol.id}
@@ -199,7 +193,7 @@ export function FinanceTable({ finances, onFinanceDeleted }: FinanceTableProps) 
                             }`}
                             title="Abrir evento"
                           >
-                            {fmt(item.amount)}
+                            {fmt(resolved)}
                           </td>
                         )
                       })}
@@ -215,11 +209,11 @@ export function FinanceTable({ finances, onFinanceDeleted }: FinanceTableProps) 
             <td className="px-3 py-2 sticky left-0 bg-red-50 text-red-700 font-semibold z-10">Total de custos</td>
             {finances.map(f => (
               <td key={f.id} className="px-3 py-2 text-right text-red-700 font-semibold tabular-nums">
-                {fmt(calcShowTotals(f).totalCosts)}
+                {fmt(computeEventFinance(f).costTotal)}
               </td>
             ))}
             <td className="px-3 py-2 text-right text-red-700 font-semibold tabular-nums bg-red-50">
-              {fmt(finances.reduce((s, f) => s + calcShowTotals(f).totalCosts, 0))}
+              {fmt(finances.reduce((s, f) => s + computeEventFinance(f).costTotal, 0))}
             </td>
           </tr>
 
@@ -227,17 +221,17 @@ export function FinanceTable({ finances, onFinanceDeleted }: FinanceTableProps) 
           <tr className="border-b hover:bg-gray-50">
             <td className="px-3 py-2 sticky left-0 bg-white text-gray-700 font-medium z-10">Lucro previsto</td>
             {finances.map(f => {
-              const { lucroPrevi } = calcShowTotals(f)
+              const { profit } = computeEventFinance(f)
               return (
-                <td key={f.id} className={`px-3 py-2 text-right font-medium tabular-nums ${lucroPrevi >= 0 ? 'text-green-700' : 'text-red-600'}`}>
-                  {fmt(lucroPrevi)}
+                <td key={f.id} className={`px-3 py-2 text-right font-medium tabular-nums ${profit >= 0 ? 'text-green-700' : 'text-red-600'}`}>
+                  {fmt(profit)}
                 </td>
               )
             })}
             <td className={`px-3 py-2 text-right font-semibold tabular-nums bg-gray-50 ${
-              finances.reduce((s, f) => s + calcShowTotals(f).lucroPrevi, 0) >= 0 ? 'text-green-700' : 'text-red-600'
+              finances.reduce((s, f) => s + computeEventFinance(f).profit, 0) >= 0 ? 'text-green-700' : 'text-red-600'
             }`}>
-              {fmt(finances.reduce((s, f) => s + calcShowTotals(f).lucroPrevi, 0))}
+              {fmt(finances.reduce((s, f) => s + computeEventFinance(f).profit, 0))}
             </td>
           </tr>
 
@@ -245,17 +239,17 @@ export function FinanceTable({ finances, onFinanceDeleted }: FinanceTableProps) 
           <tr className="border-b bg-gray-50">
             <td className="px-3 py-3 sticky left-0 bg-gray-50 text-gray-900 font-bold z-10">Lucro real</td>
             {finances.map(f => {
-              const { lucroReal } = calcShowTotals(f)
+              const { cashProfit } = computeEventFinance(f)
               return (
-                <td key={f.id} className={`px-3 py-3 text-right font-bold tabular-nums ${lucroReal >= 0 ? 'text-green-700' : 'text-red-600'}`}>
-                  {fmt(lucroReal)}
+                <td key={f.id} className={`px-3 py-3 text-right font-bold tabular-nums ${cashProfit >= 0 ? 'text-green-700' : 'text-red-600'}`}>
+                  {fmt(cashProfit)}
                 </td>
               )
             })}
             <td className={`px-3 py-3 text-right font-bold tabular-nums bg-gray-100 ${
-              finances.reduce((s, f) => s + calcShowTotals(f).lucroReal, 0) >= 0 ? 'text-green-700' : 'text-red-600'
+              finances.reduce((s, f) => s + computeEventFinance(f).cashProfit, 0) >= 0 ? 'text-green-700' : 'text-red-600'
             }`}>
-              {fmt(finances.reduce((s, f) => s + calcShowTotals(f).lucroReal, 0))}
+              {fmt(finances.reduce((s, f) => s + computeEventFinance(f).cashProfit, 0))}
             </td>
           </tr>
         </tbody>
