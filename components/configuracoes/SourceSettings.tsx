@@ -5,14 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { GripVertical, Trash2, Plus } from 'lucide-react'
-
-type Source = { key: string; label: string }
-
-const DEFAULT_SOURCES: Source[] = [
-  { key: 'referral',     label: 'Indicação' },
-  { key: 'social_media', label: 'Redes Sociais' },
-  { key: 'paid_traffic', label: 'Tráfego Pago' },
-]
+import { DEFAULT_SOURCES, type LeadSource as Source } from '@/lib/settings-defaults'
 
 interface SourceSettingsProps {
   initialSources: Source[] | null

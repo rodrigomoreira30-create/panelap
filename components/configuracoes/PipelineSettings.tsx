@@ -5,17 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { GripVertical, Trash2, Plus } from 'lucide-react'
-
-type Stage = { key: string; label: string }
-
-const DEFAULT_STAGES: Stage[] = [
-  { key: 'new_lead',       label: 'Novo Lead' },
-  { key: 'attending',      label: 'Em Atendimento' },
-  { key: 'proposal_sent',  label: 'Proposta Enviada' },
-  { key: 'negotiation',    label: 'Negociação' },
-  { key: 'closed',         label: 'Fechado' },
-  { key: 'lost',           label: 'Perdido' },
-]
+import { DEFAULT_STAGES, type PipelineStage as Stage } from '@/lib/settings-defaults'
 
 interface PipelineSettingsProps {
   initialStages: Stage[] | null
