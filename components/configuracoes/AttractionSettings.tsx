@@ -125,7 +125,7 @@ export function AttractionSettings({ initialAttractions }: AttractionSettingsPro
             className={`flex items-center gap-2 p-3 border rounded-lg bg-white transition-opacity ${!a.is_active ? 'opacity-60' : ''}`}
           >
             {editingId === a.id ? (
-              <div className="flex-1 grid grid-cols-2 gap-2">
+              <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <Input
                   value={editForm.name}
                   onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
@@ -190,7 +190,7 @@ export function AttractionSettings({ initialAttractions }: AttractionSettingsPro
 
       {showNew ? (
         <div className="border border-dashed border-indigo-300 rounded-lg p-3 space-y-2 bg-indigo-50/30">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <Input
               value={newForm.name}
               onChange={e => setNewForm(f => ({ ...f, name: e.target.value }))}
