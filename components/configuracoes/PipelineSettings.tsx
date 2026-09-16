@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { GripVertical, Trash2, Plus } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { DEFAULT_STAGES, type PipelineStage as Stage } from '@/lib/settings-defaults'
 
 interface PipelineSettingsProps {
@@ -71,7 +72,7 @@ export function PipelineSettings({ initialStages }: PipelineSettingsProps) {
         Arraste para reordenar. Edite os nomes ou adicione novas etapas.
       </p>
 
-      <div className="space-y-2">
+      <div className={cn('space-y-2', stages.length > 6 && 'max-h-72 overflow-y-auto pr-1')}>
         {stages.map((stage, index) => (
           <div
             key={stage.key}

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Plus, Pencil, Check, X, Trash2 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
@@ -117,7 +118,7 @@ export function AttractionSettings({ initialAttractions }: AttractionSettingsPro
 
       {error && <p className="text-red-500 text-sm">{error}</p>}
 
-      <div className="space-y-2">
+      <div className={cn('space-y-2', attractions.length > 6 && 'max-h-72 overflow-y-auto pr-1')}>
         {attractions.map(a => (
           <div
             key={a.id}
