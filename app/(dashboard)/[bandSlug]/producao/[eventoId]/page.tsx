@@ -77,8 +77,6 @@ export default async function EventDetailPage({
           event_time:      event.event_time ?? null,
           venue_name:      event.venue_name,
           venue_address:   event.venue_address ?? null,
-          venue_has_sound: event.venue_has_sound,
-          venue_has_light: event.venue_has_light,
           value:           parseFloat(event.value.toString()),
           status:          event.status,
         }}

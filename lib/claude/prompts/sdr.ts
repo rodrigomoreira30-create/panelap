@@ -7,8 +7,6 @@ SUAS RESPONSABILIDADES:
    - Data do evento
    - Tipo de evento (casamento, festa, show corporativo, etc.)
    - Local e cidade
-   - O local já possui estrutura de som? (sim/não)
-   - O local já possui estrutura de iluminação? (sim/não)
    - Orçamento estimado do cliente
 3. Após coletar todos os dados, gerar e enviar uma proposta adequada
 4. Fazer follow-up se o cliente não responder em 24h

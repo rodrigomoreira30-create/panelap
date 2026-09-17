@@ -14,8 +14,6 @@ export const crmTools: Anthropic.Tool[] = [
         event_date:      { type: 'string', description: 'Data ISO 8601 do evento' },
         city:            { type: 'string' },
         venue_name:      { type: 'string' },
-        venue_has_sound: { type: 'boolean' },
-        venue_has_light: { type: 'boolean' },
         budget:          { type: 'number' },
         observations:    { type: 'string' },
       },

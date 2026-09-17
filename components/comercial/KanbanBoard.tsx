@@ -31,8 +31,6 @@ export type KanbanLead = {
   event_date: string | null
   city: string | null
   venue_name: string | null
-  venue_has_sound: boolean
-  venue_has_light: boolean
   budget: number | null
   status: string
   source: string | null

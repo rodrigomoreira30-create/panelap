@@ -36,8 +36,6 @@ export async function runContractsAgent({ lead_id, band_id }: ContractsAgentInpu
     event_date:      lead.event_date?.toISOString() ?? null,
     city:            lead.city,
     venue_name:      lead.venue_name,
-    venue_has_sound: lead.venue_has_sound,
-    venue_has_light: lead.venue_has_light,
     budget:          lead.budget ? parseFloat(lead.budget.toString()) : null,
     observations:    lead.observations,
   })

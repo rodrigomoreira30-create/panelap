@@ -21,7 +21,6 @@ export function LeadForm({ sources, onSuccess, onCancel }: LeadFormProps) {
   const [form, setForm] = useState({
     client_name: '', phone: '', event_type: '', source: '',
     event_date: '', city: '', venue_name: '', budget: '',
-    venue_has_sound: false, venue_has_light: false,
     assessor: '', assessor_phone: '', observations: '',
   })
 
@@ -119,24 +118,6 @@ export function LeadForm({ sources, onSuccess, onCancel }: LeadFormProps) {
           <Label>Telefone da assessoria</Label>
           <Input value={form.assessor_phone} onChange={e => set('assessor_phone', e.target.value)} placeholder="(00) 00000-0000" />
         </div>
-      </div>
-      <div className="flex gap-4">
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={form.venue_has_sound}
-            onChange={e => set('venue_has_sound', e.target.checked)}
-          />
-          Local tem som
-        </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={form.venue_has_light}
-            onChange={e => set('venue_has_light', e.target.checked)}
-          />
-          Local tem luz
-        </label>
       </div>
       <div>
         <Label>Observações</Label>

@@ -27,8 +27,6 @@ export function registerProductionLeadClosedListener() {
           event_date:      lead.event_date,
           venue_name:      lead.venue_name ?? 'A definir',
           venue_address:   lead.city ?? undefined,
-          venue_has_sound: lead.venue_has_sound,
-          venue_has_light: lead.venue_has_light,
           value:           lead.budget ?? 0,
           status:          'contracted',
           notes:           lead.observations ?? undefined,

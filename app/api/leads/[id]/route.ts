@@ -87,8 +87,6 @@ export async function PATCH(
               event_date:      updated.event_date,
               venue_name:      updated.venue_name ?? 'A definir',
               venue_address:   updated.city ?? undefined,
-              venue_has_sound: updated.venue_has_sound,
-              venue_has_light: updated.venue_has_light,
               value:           updated.budget ?? 0,
               status:          'contracted',
               notes:           updated.observations ?? undefined,

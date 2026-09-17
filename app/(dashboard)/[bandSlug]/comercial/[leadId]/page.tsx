@@ -66,8 +66,6 @@ export default async function LeadDetailPage({
             city:            lead.city,
             venue_name:      lead.venue_name,
             budget:          lead.budget ? parseFloat(lead.budget.toString()) : null,
-            venue_has_sound: lead.venue_has_sound,
-            venue_has_light: lead.venue_has_light,
             observations:    lead.observations,
             assessor:        lead.assessor,
             assessor_phone:  lead.assessor_phone,

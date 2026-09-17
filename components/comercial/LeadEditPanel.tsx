@@ -26,8 +26,6 @@ interface LeadData {
   city: string | null
   venue_name: string | null
   budget: number | null
-  venue_has_sound: boolean
-  venue_has_light: boolean
   observations: string | null
   assessor: string | null
   assessor_phone: string | null
@@ -82,8 +80,6 @@ export function LeadEditPanel({ lead, stages, sources, initialDocs, initialAttra
     city:            lead.city ?? '',
     venue_name:      lead.venue_name ?? '',
     budget:          lead.budget != null ? String(lead.budget) : '',
-    venue_has_sound: lead.venue_has_sound,
-    venue_has_light: lead.venue_has_light,
     observations:    lead.observations ?? '',
     source:          lead.source ?? '',
     assessor:        lead.assessor ?? '',
@@ -102,8 +98,6 @@ export function LeadEditPanel({ lead, stages, sources, initialDocs, initialAttra
       city:            displayed.city ?? '',
       venue_name:      displayed.venue_name ?? '',
       budget:          displayed.budget != null ? String(displayed.budget) : '',
-      venue_has_sound: displayed.venue_has_sound,
-      venue_has_light: displayed.venue_has_light,
       observations:    displayed.observations ?? '',
       source:          displayed.source ?? '',
       assessor:        displayed.assessor ?? '',
@@ -126,8 +120,6 @@ export function LeadEditPanel({ lead, stages, sources, initialDocs, initialAttra
         city:            form.city || null,
         venue_name:      form.venue_name || null,
         budget:          form.budget ? parseFloat(form.budget) : null,
-        venue_has_sound: form.venue_has_sound,
-        venue_has_light: form.venue_has_light,
         observations:    form.observations || null,
         source:          form.source || null,
         assessor:        form.assessor || null,
@@ -145,8 +137,6 @@ export function LeadEditPanel({ lead, stages, sources, initialDocs, initialAttra
         city:            form.city || null,
         venue_name:      form.venue_name || null,
         budget:          form.budget ? parseFloat(form.budget) : null,
-        venue_has_sound: form.venue_has_sound,
-        venue_has_light: form.venue_has_light,
         observations:    form.observations || null,
         source:          form.source || null,
         assessor:        form.assessor || null,
@@ -311,26 +301,6 @@ export function LeadEditPanel({ lead, stages, sources, initialDocs, initialAttra
                   <span className="text-gray-400">Não informado</span>
                 )}
               </div>
-
-              {editing ? (
-                <div className="flex gap-4 pt-1">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={form.venue_has_sound}
-                      onChange={e => set('venue_has_sound', e.target.checked)} />
-                    <span>Som incluso</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={form.venue_has_light}
-                      onChange={e => set('venue_has_light', e.target.checked)} />
-                    <span>Luz inclusa</span>
-                  </label>
-                </div>
-              ) : (
-                <div className="flex gap-3">
-                  <span><span className="font-medium">Som:</span> {displayed.venue_has_sound ? 'Incluso' : 'Não incluso'}</span>
-                  <span><span className="font-medium">Luz:</span> {displayed.venue_has_light ? 'Incluso' : 'Não incluso'}</span>
-                </div>
-              )}
 
               {displayed.assignee && (
                 <div><span className="font-medium">Responsável:</span> {displayed.assignee.name}</div>

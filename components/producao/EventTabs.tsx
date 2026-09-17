@@ -45,8 +45,6 @@ interface EventInfo {
   event_time: string | null
   venue_name: string
   venue_address: string | null
-  venue_has_sound: boolean
-  venue_has_light: boolean
   value: number
   status: string
 }

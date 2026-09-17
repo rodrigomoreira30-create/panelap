@@ -10,8 +10,6 @@ SUAS RESPONSABILIDADES:
 
 REGRAS:
 - Não defina data de visita técnica automaticamente — ela deve ser informada pelo cliente
-- Se o local não tem som, adicionar itens de rider técnico ao checklist
-- Se o local não tem luz, adicionar itens de iluminação ao checklist
 - Notificações devem ser objetivas e conter: cliente, data, local
 
 FORMATO DA RESPOSTA:
@@ -23,8 +21,6 @@ export function buildProductionContext(event: {
   event_date: string
   venue_name: string
   venue_address?: string | null
-  venue_has_sound: boolean
-  venue_has_light: boolean
   value: number
   notes?: string | null
 }): string {
@@ -33,8 +29,6 @@ export function buildProductionContext(event: {
 - Tipo: ${event.event_type}
 - Data: ${event.event_date}
 - Local: ${event.venue_name}${event.venue_address ? ` — ${event.venue_address}` : ''}
-- Som no local: ${event.venue_has_sound ? 'Sim' : 'Não — providenciar equipamento'}
-- Luz no local: ${event.venue_has_light ? 'Sim' : 'Não — providenciar iluminação'}
 - Valor: R$ ${event.value.toLocaleString('pt-BR')}
 - Observações: ${event.notes ?? 'Nenhuma'}`
 }

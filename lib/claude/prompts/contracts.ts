@@ -24,8 +24,6 @@ export function buildContractsContext(lead: {
   event_date: string | null
   city: string | null
   venue_name: string | null
-  venue_has_sound: boolean
-  venue_has_light: boolean
   budget: number | null
   observations: string | null
 }): string {
@@ -36,8 +34,6 @@ export function buildContractsContext(lead: {
 - Data: ${lead.event_date ?? 'Não informada'}
 - Cidade: ${lead.city ?? 'Não informada'}
 - Local: ${lead.venue_name ?? 'Não informado'}
-- Som incluso: ${lead.venue_has_sound ? 'Sim' : 'Não'}
-- Luz inclusa: ${lead.venue_has_light ? 'Sim' : 'Não'}
 - Valor acordado: ${lead.budget ? `R$ ${lead.budget.toLocaleString('pt-BR')}` : 'Não informado'}
 - Observações: ${lead.observations ?? 'Nenhuma'}`
 }

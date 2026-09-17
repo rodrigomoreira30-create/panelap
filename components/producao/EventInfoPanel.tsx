@@ -30,8 +30,6 @@ interface EventInfo {
   event_time: string | null
   venue_name: string
   venue_address: string | null
-  venue_has_sound: boolean
-  venue_has_light: boolean
   value: number
   status: string
 }
@@ -64,8 +62,6 @@ export function EventInfoPanel({ event, attractions = [], attractionsTotal, asse
     event_time:      event.event_time ?? '',
     venue_name:      event.venue_name,
     venue_address:   event.venue_address ?? '',
-    venue_has_sound: event.venue_has_sound,
-    venue_has_light: event.venue_has_light,
     assessor:        initialAssessor ?? '',
   })
 
@@ -81,8 +77,6 @@ export function EventInfoPanel({ event, attractions = [], attractionsTotal, asse
       event_time:      data.event_time ?? '',
       venue_name:      data.venue_name,
       venue_address:   data.venue_address ?? '',
-      venue_has_sound: data.venue_has_sound,
-      venue_has_light: data.venue_has_light,
       assessor:        assessorDisplay,
     })
     setError('')
@@ -103,8 +97,6 @@ export function EventInfoPanel({ event, attractions = [], attractionsTotal, asse
           event_time:      form.event_time || null,
           venue_name:      form.venue_name,
           venue_address:   form.venue_address || null,
-          venue_has_sound: form.venue_has_sound,
-          venue_has_light: form.venue_has_light,
         }),
       }),
       leadId
@@ -125,8 +117,6 @@ export function EventInfoPanel({ event, attractions = [], attractionsTotal, asse
         event_time:      form.event_time || null,
         venue_name:      form.venue_name,
         venue_address:   form.venue_address || null,
-        venue_has_sound: form.venue_has_sound,
-        venue_has_light: form.venue_has_light,
       }))
       setAssessorDisplay(form.assessor)
       setEditing(false)
@@ -233,30 +223,6 @@ export function EventInfoPanel({ event, attractions = [], attractionsTotal, asse
               className="mt-1 h-7 text-sm" placeholder="Cidade / endereço" />
           ) : (
             <span>{data.venue_address ?? '—'}</span>
-          )}
-        </div>
-        <div>
-          <span className="font-medium text-gray-700">Som:</span>{' '}
-          {editing ? (
-            <label className="inline-flex items-center gap-1 ml-1 cursor-pointer">
-              <input type="checkbox" checked={form.venue_has_sound}
-                onChange={e => set('venue_has_sound', e.target.checked)} />
-              <span>Incluso</span>
-            </label>
-          ) : (
-            <span>{data.venue_has_sound ? '✅ Incluso' : '❌ Providenciar'}</span>
-          )}
-        </div>
-        <div>
-          <span className="font-medium text-gray-700">Luz:</span>{' '}
-          {editing ? (
-            <label className="inline-flex items-center gap-1 ml-1 cursor-pointer">
-              <input type="checkbox" checked={form.venue_has_light}
-                onChange={e => set('venue_has_light', e.target.checked)} />
-              <span>Incluso</span>
-            </label>
-          ) : (
-            <span>{data.venue_has_light ? '✅ Incluso' : '❌ Providenciar'}</span>
           )}
         </div>
         <div>

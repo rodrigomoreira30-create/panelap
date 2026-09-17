@@ -48,8 +48,6 @@ const mockLead = {
   event_date: null,
   city: 'São Paulo',
   venue_name: 'Salão X',
-  venue_has_sound: false,
-  venue_has_light: false,
   budget: null,
   observations: null,
 }

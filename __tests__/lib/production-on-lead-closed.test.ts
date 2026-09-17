@@ -53,8 +53,6 @@ describe('registerProductionLeadClosedListener', () => {
       event_date: new Date('2026-12-01'),
       venue_name: 'Salão Nobre',
       city: 'São Paulo',
-      venue_has_sound: true,
-      venue_has_light: false,
       budget: 5000,
       observations: 'Nenhuma',
     }
@@ -106,8 +104,6 @@ describe('registerProductionLeadClosedListener', () => {
       event_date: new Date('2026-12-01'),
       venue_name: 'Salão Nobre',
       city: 'São Paulo',
-      venue_has_sound: true,
-      venue_has_light: false,
       budget: 5000,
       observations: null,
     }
@@ -134,8 +130,6 @@ describe('registerProductionLeadClosedListener', () => {
       event_date: null,
       venue_name: 'Salão Nobre',
       city: null,
-      venue_has_sound: false,
-      venue_has_light: false,
       budget: null,
       observations: null,
     }
