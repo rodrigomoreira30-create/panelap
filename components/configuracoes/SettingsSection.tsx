@@ -31,11 +31,12 @@ export function SettingsSection({
         className="flex w-full items-center justify-between gap-3 px-4 sm:px-5 py-4 text-left"
       >
         <span className="min-w-0">
-          <span className="block font-semibold">{title}</span>
+          <span role="heading" aria-level={2} className="block font-semibold">{title}</span>
           <span className="block text-sm text-muted-foreground truncate">{description}</span>
         </span>
         <ChevronDown
           size={18}
+          aria-hidden="true"
           className={cn(
             'shrink-0 text-muted-foreground transition-transform duration-200',
             open && 'rotate-180'
