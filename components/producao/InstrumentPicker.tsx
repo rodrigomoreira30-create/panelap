@@ -6,21 +6,15 @@ import { Check, X } from 'lucide-react'
 const CATEGORIES = [
   {
     label: 'Teclas',
-    items: ['Acordeom', 'Órgão', 'Piano', 'Sintetizador', 'Teclado'],
+    items: ['Acordeom', 'Piano', 'Teclado'],
   },
   {
     label: 'Voz',
-    items: [
-      'Backing Vocal', 'Baixo (Voz)', 'Barítono', 'Contralto',
-      'Soprano', 'Tenor', 'Vocal', 'Voz Feminina', 'Voz Masculina',
-    ],
+    items: ['Backing Vocal', 'Vocal', 'Voz Feminina', 'Voz Masculina'],
   },
   {
     label: 'Cordas',
-    items: [
-      'Baixo', 'Bandolim', 'Cavaquinho', 'Contrabaixo Acústico',
-      'Guitarra', 'Harpa', 'Ukulele', 'Viola', 'Violão', 'Violino', 'Violoncelo',
-    ],
+    items: ['Baixo', 'Bandolim', 'Cavaquinho', 'Guitarra', 'Viola', 'Violão'],
   },
   {
     label: 'Percussão',
@@ -32,7 +26,7 @@ const CATEGORIES = [
   },
   {
     label: 'Outros',
-    items: ['DJ', 'Equipe de Som', 'Técnico', 'Time AllMusic', 'Time Beats', 'Time SB'],
+    items: ['DJ', 'Equipe de Som', 'Técnico', 'Time AllMusic', 'Time Beats', 'Time SB', 'Cerimônia'],
   },
 ]
 

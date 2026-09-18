@@ -9,6 +9,7 @@ import {
   Users,
   Music,
   Music2,
+  Sparkles,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -75,6 +76,7 @@ const INSTRUMENT_ICON_MAP: Record<string, LucideIcon> = {
   'time allmusic':    Users,
   'time beats':       Users,
   'time sb':          Users,
+  'cerimônia':        Sparkles,
 
   // Valor não oferecido pelo seletor atual, mantido por resiliência a dados legados
   'iluminação': Lightbulb,
