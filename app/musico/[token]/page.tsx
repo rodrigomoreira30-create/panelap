@@ -4,7 +4,8 @@ import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Calendar, MapPin, Music, Download } from 'lucide-react'
+import { Calendar, MapPin, Music, Download, Banknote } from 'lucide-react'
+import { formatCacheValue } from '@/lib/production/musician-schedule'
 
 const eventTypeLabels: Record<string, string> = {
   wedding: 'Casamento', party: 'Festa', show: 'Show',
@@ -33,6 +34,7 @@ export default async function MusicianSchedulePage({
         select: {
           id: true,
           status: true,
+          cache_value: true,
           event: {
             select: {
               client_name: true,
@@ -109,6 +111,7 @@ export default async function MusicianSchedulePage({
                       "EEEE, d 'de' MMMM yyyy",
                       { locale: ptBR }
                     )
+                    const cacheDisplay = formatCacheValue(em.cache_value)
                     return (
                       <div key={em.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
                         <div className="flex items-start justify-between gap-2 mb-3">
@@ -131,6 +134,12 @@ export default async function MusicianSchedulePage({
                             <MapPin size={14} className="text-gray-400 shrink-0" />
                             {em.event.venue_name ?? ''}{em.event.venue_address ? ` — ${em.event.venue_address}` : ''}
                           </p>
+                          {cacheDisplay && (
+                            <p className="flex items-center gap-1.5">
+                              <Banknote size={14} className="text-gray-400 shrink-0" />
+                              Cachê: R$ {cacheDisplay}
+                            </p>
+                          )}
                         </div>
                         {em.status === 'pending' && (
                           <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
