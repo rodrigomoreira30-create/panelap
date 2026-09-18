@@ -6,6 +6,7 @@ import { X, Link2, Check, Loader2, Plus, UserPlus } from 'lucide-react'
 import type { EventData, EventMusician } from './EventDetailClient'
 import { InstrumentPicker } from './InstrumentPicker'
 import { AssignMusicianModal } from './AssignMusicianModal'
+import { getInstrumentIcon } from '@/lib/production/instrument-icons'
 
 const statusConfig: Record<string, { label: string; className: string }> = {
   pending:   { label: 'Pendente',   className: 'bg-yellow-100 text-yellow-700' },
@@ -131,11 +132,12 @@ export function TeamPanel({ eventId, musicians, bandMembers, initialTeamNotes }:
         )}
         {musicians.map(em => {
           const cfg = em.user ? (statusConfig[em.status] ?? statusConfig.pending) : null
+          const InstrumentIcon = getInstrumentIcon(em.instrument)
           return (
             <div key={em.id} className="flex items-center gap-3 p-4 border rounded-xl bg-white shadow-sm">
               {/* Ícone */}
-              <div className="h-12 w-12 rounded-full bg-indigo-50 flex items-center justify-center text-xl shrink-0">
-                🎵
+              <div className="h-12 w-12 rounded-full bg-indigo-50 flex items-center justify-center shrink-0">
+                <InstrumentIcon size={20} className="text-indigo-600" />
               </div>
 
               {/* Info */}
