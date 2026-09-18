@@ -16,7 +16,10 @@ export async function GET(request: Request) {
 
   const finances = await prisma.eventFinance.findMany({
     where: { band_id: sessionUser.band_id, event_date: { gte: startDate, lte: endDate } },
-    include: { items: { orderBy: { created_at: 'asc' } } },
+    include: {
+      items:    { orderBy: { created_at: 'asc' } },
+      payments: { orderBy: { payment_date: 'asc' } },
+    },
     orderBy: { event_date: 'asc' },
   })
 

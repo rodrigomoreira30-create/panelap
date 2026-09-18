@@ -2,7 +2,7 @@
 
 import { useRouter, useParams } from 'next/navigation'
 import { Trash2 } from 'lucide-react'
-import { fmt, DEFAULT_FINANCE_ITEMS, computeEventFinance, resolveItemAmount, type EventFinanceData } from '@/lib/financas'
+import { fmt, DEFAULT_FINANCE_ITEMS, computeEventFinance, computeReceivedAmount, resolveItemAmount, type EventFinanceData } from '@/lib/financas'
 
 interface FinanceTableProps {
   finances: EventFinanceData[]
@@ -91,11 +91,11 @@ export function FinanceTable({ finances, onFinanceDeleted }: FinanceTableProps) 
                 className="px-3 py-2 text-right text-xs font-medium tabular-nums text-green-600 cursor-pointer hover:bg-gray-100"
                 title="Abrir evento"
               >
-                {fmt(f.received_amount)}
+                {fmt(computeReceivedAmount(f))}
               </td>
             ))}
             <td className="px-3 py-2 text-right font-semibold text-green-600 tabular-nums bg-gray-50">
-              {fmt(finances.reduce((s, f) => s + f.received_amount, 0))}
+              {fmt(finances.reduce((s, f) => s + computeReceivedAmount(f), 0))}
             </td>
           </tr>
 

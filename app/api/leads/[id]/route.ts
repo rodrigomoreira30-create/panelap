@@ -134,10 +134,12 @@ export async function DELETE(
     // Apaga evento vinculado (e em cascata: contratos, checklists, músicos)
     const event = await prisma.event.findUnique({
       where: { lead_id: id },
-      include: { finance: { include: { items: true } } },
+      include: { finance: { include: { items: true, payments: true } } },
     })
     if (event?.finance) {
-      const received = parseFloat(event.finance.received_amount.toString())
+      const received = event.finance.payments.length > 0
+        ? event.finance.payments.reduce((s, p) => s + parseFloat(p.amount.toString()), 0)
+        : parseFloat(event.finance.received_amount.toString())
       const hasPaidItems = event.finance.items.some(i => i.paid)
       if ((received > 0 || hasPaidItems) && !force) {
         return NextResponse.json({

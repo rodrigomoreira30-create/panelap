@@ -5,7 +5,10 @@ import { Prisma } from '@/lib/generated/prisma/client'
 export async function getOrCreateEventFinance(eventId: string) {
   const existing = await prisma.eventFinance.findUnique({
     where: { event_id: eventId },
-    include: { items: { orderBy: { created_at: 'asc' } } },
+    include: {
+      items:    { orderBy: { created_at: 'asc' } },
+      payments: { orderBy: { payment_date: 'asc' } },
+    },
   })
   if (existing) return existing
 
@@ -32,7 +35,10 @@ export async function getOrCreateEventFinance(eventId: string) {
           },
         },
       },
-      include: { items: { orderBy: { created_at: 'asc' } } },
+      include: {
+        items:    { orderBy: { created_at: 'asc' } },
+        payments: { orderBy: { payment_date: 'asc' } },
+      },
     })
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
@@ -40,7 +46,10 @@ export async function getOrCreateEventFinance(eventId: string) {
       // refetch-on-focus) — lê o que foi criado em vez de propagar o erro.
       return prisma.eventFinance.findUniqueOrThrow({
         where: { event_id: eventId },
-        include: { items: { orderBy: { created_at: 'asc' } } },
+        include: {
+          items:    { orderBy: { created_at: 'asc' } },
+          payments: { orderBy: { payment_date: 'asc' } },
+        },
       })
     }
     throw err

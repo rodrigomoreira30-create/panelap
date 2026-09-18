@@ -13,6 +13,15 @@ export type FinanceItemData = {
   event_musician_id: string | null
 }
 
+export type EventPaymentData = {
+  id: string
+  finance_id: string
+  payment_date: string
+  amount: number
+  payment_method: string
+  notes: string | null
+}
+
 export type EventFinanceData = {
   id: string
   event_id: string | null
@@ -24,6 +33,7 @@ export type EventFinanceData = {
   received_amount: number
   notes: string | null
   items: FinanceItemData[]
+  payments: EventPaymentData[]
 }
 
 export const CACHE_MUSICO_CATEGORY = 'cache_musico'
@@ -76,6 +86,14 @@ export function serializeFinance(f: any): EventFinanceData {
       is_overridden:      i.is_overridden ?? false,
       event_musician_id:  i.event_musician_id ?? null,
     })),
+    payments: (f.payments ?? []).map((p: any) => ({
+      id:             p.id,
+      finance_id:     p.finance_id,
+      payment_date:   p.payment_date instanceof Date ? p.payment_date.toISOString() : p.payment_date,
+      amount:         parseFloat(p.amount.toString()),
+      payment_method: p.payment_method,
+      notes:          p.notes ?? null,
+    })),
   }
 }
 
@@ -83,9 +101,22 @@ export function fmt(n: number): string {
   return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+export function parseBR(raw: string): number {
+  return parseFloat(raw.trim().replace(/\./g, '').replace(',', '.'))
+}
+
+/** Valor recebido "vivo" de um evento: se já existe pelo menos um recebimento
+ * registrado no histórico (EventPayment), a soma deles é a fonte da verdade.
+ * Caso contrário, preserva o valor legado gravado manualmente em `received_amount`
+ * (compatibilidade com eventos antigos, sem risco de duplicar receita). */
+export function computeReceivedAmount(finance: Pick<EventFinanceData, 'received_amount' | 'payments'>): number {
+  if (finance.payments.length === 0) return finance.received_amount
+  return round2(finance.payments.reduce((s, p) => s + p.amount, 0))
+}
+
 export function calcTotals(finances: EventFinanceData[]) {
   const totalRevenue   = finances.reduce((s, f) => s + f.expected_revenue, 0)
-  const totalReceived  = finances.reduce((s, f) => s + f.received_amount, 0)
+  const totalReceived  = finances.reduce((s, f) => s + computeReceivedAmount(f), 0)
   const totalToReceive = totalRevenue - totalReceived
   const totalCosts     = finances.reduce(
     (s, f) => s + computeEventFinance(f).costTotal, 0
@@ -117,7 +148,7 @@ export type EventFinanceTotals = {
 
 export function computeEventFinance(finance: EventFinanceData): EventFinanceTotals {
   const revenueForecast = finance.expected_revenue
-  const received        = finance.received_amount
+  const received        = computeReceivedAmount(finance)
   const receivable       = round2(revenueForecast - received)
 
   const costByCategory: Record<string, number> = {}

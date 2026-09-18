@@ -3,8 +3,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { CheckCircle2, Circle } from 'lucide-react'
+import { Textarea } from '@/components/ui/textarea'
+import { EventPaymentsSection } from './EventPaymentsSection'
 import {
   fmt,
+  parseBR,
   DEFAULT_FINANCE_ITEMS,
   PERCENT_ELIGIBLE_CATEGORIES,
   CACHE_MUSICO_CATEGORY,
@@ -19,10 +22,6 @@ async function fetchFinance(eventoId: string): Promise<FinanceResponse> {
   const res = await fetch(`/api/events/${eventoId}/finance`)
   if (!res.ok) throw new Error('Falha ao carregar o financeiro do evento')
   return res.json()
-}
-
-function parseBR(raw: string): number {
-  return parseFloat(raw.trim().replace(/\./g, '').replace(',', '.'))
 }
 
 function CurrencyInput({
@@ -49,6 +48,28 @@ function CurrencyInput({
       }}
       onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
       className={`w-32 text-right text-sm border rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500 ${className}`}
+    />
+  )
+}
+
+function NotesTextarea({
+  value,
+  onCommit,
+}: {
+  value: string
+  onCommit: (v: string) => void
+}) {
+  const [input, setInput] = useState(value)
+  useEffect(() => setInput(value), [value])
+
+  return (
+    <Textarea
+      value={input}
+      onChange={e => setInput(e.target.value)}
+      onBlur={() => { if (input !== value) onCommit(input) }}
+      rows={3}
+      placeholder="Anotações internas sobre o financeiro deste evento..."
+      className="text-sm"
     />
   )
 }
@@ -185,15 +206,25 @@ export function EventFinanceTab({ eventoId }: { eventoId: string }) {
               className="w-full mt-1"
             />
           </label>
-          <label className="text-xs text-gray-500">
+          <div className="text-xs text-gray-500">
             Valor recebido
-            <CurrencyInput
-              value={finance.received_amount}
-              onCommit={v => patchFinance({ received_amount: v })}
-              className="w-full mt-1"
-            />
-          </label>
+            <p className="mt-1 py-1 text-sm font-medium text-gray-900">R$ {fmt(totals.received)}</p>
+          </div>
         </div>
+      </div>
+
+      <EventPaymentsSection
+        financeId={finance.id}
+        payments={finance.payments}
+        onChange={() => queryClient.invalidateQueries({ queryKey })}
+      />
+
+      <div>
+        <h3 className="text-sm font-semibold text-gray-900 mb-3">Observações financeiras</h3>
+        <NotesTextarea
+          value={finance.notes ?? ''}
+          onCommit={v => patchFinance({ notes: v || null })}
+        />
       </div>
 
       <div>

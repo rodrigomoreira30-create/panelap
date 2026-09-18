@@ -29,7 +29,10 @@ export async function PATCH(
       received_amount:  body.received_amount  !== undefined ? body.received_amount  : undefined,
       notes:            body.notes            !== undefined ? body.notes            : undefined,
     },
-    include: { items: { orderBy: { created_at: 'asc' } } },
+    include: {
+      items:    { orderBy: { created_at: 'asc' } },
+      payments: { orderBy: { payment_date: 'asc' } },
+    },
   })
 
   return NextResponse.json({ data: serializeFinance(updated) })

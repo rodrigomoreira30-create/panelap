@@ -8,6 +8,16 @@ import { EventStatus } from '@/lib/generated/prisma/enums'
 // 'closed_won'/'closed_lost' — common custom pipeline terminal stage names
 const CLOSED_STATUSES = ['closed', 'lost', 'closed_won', 'closed_lost']
 
+/** Mesma regra de compatibilidade de `computeReceivedAmount` (lib/financas.ts),
+ * aplicada a uma consulta Prisma parcial (apenas os campos selecionados aqui). */
+function financeReceivedAmount(f: {
+  received_amount: { toString(): string }
+  payments: { amount: { toString(): string } }[]
+}): number {
+  if (f.payments.length === 0) return parseFloat(f.received_amount.toString())
+  return f.payments.reduce((s, p) => s + parseFloat(p.amount.toString()), 0)
+}
+
 const DEFAULT_STAGES = [
   { key: 'new_lead',      label: 'Novo Lead' },
   { key: 'attending',     label: 'Em Atendimento' },
@@ -117,10 +127,10 @@ export async function GET(request: Request) {
   const em30dias = new Date(hoje); em30dias.setDate(hoje.getDate() + 30); em30dias.setHours(23, 59, 59)
   const financesNext30 = await prisma.eventFinance.findMany({
     where: { band_id: bandId, event_date: { gte: hoje, lte: em30dias } },
-    select: { expected_revenue: true, received_amount: true },
+    select: { expected_revenue: true, received_amount: true, payments: { select: { amount: true } } },
   })
   const aReceber30dias = financesNext30.reduce((s, f) => {
-    const saldo = parseFloat(f.expected_revenue.toString()) - parseFloat(f.received_amount.toString())
+    const saldo = parseFloat(f.expected_revenue.toString()) - financeReceivedAmount(f)
     return s + Math.max(0, saldo)
   }, 0)
 
@@ -129,9 +139,9 @@ export async function GET(request: Request) {
   const fimMes    = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 23, 59, 59)
   const financesMes = await prisma.eventFinance.findMany({
     where: { band_id: bandId, event_date: { gte: inicioMes, lte: fimMes } },
-    select: { expected_revenue: true, received_amount: true },
+    select: { expected_revenue: true, received_amount: true, payments: { select: { amount: true } } },
   })
-  const recebidoMes = financesMes.reduce((s, f) => s + parseFloat(f.received_amount.toString()), 0)
+  const recebidoMes = financesMes.reduce((s, f) => s + financeReceivedAmount(f), 0)
   const previstMes  = financesMes.reduce((s, f) => s + parseFloat(f.expected_revenue.toString()), 0)
 
   // Próximos eventos

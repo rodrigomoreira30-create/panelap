@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { computeEventFinance, resolveItemAmount, type EventFinanceData, type FinanceItemData } from '@/lib/financas'
+import {
+  computeEventFinance,
+  computeReceivedAmount,
+  resolveItemAmount,
+  type EventFinanceData,
+  type FinanceItemData,
+  type EventPaymentData,
+} from '@/lib/financas'
 
 function item(overrides: Partial<FinanceItemData> = {}): FinanceItemData {
   return {
@@ -17,6 +24,18 @@ function item(overrides: Partial<FinanceItemData> = {}): FinanceItemData {
   }
 }
 
+function payment(overrides: Partial<EventPaymentData> = {}): EventPaymentData {
+  return {
+    id: 'payment-1',
+    finance_id: 'finance-1',
+    payment_date: '2026-09-14T00:00:00.000Z',
+    amount: 0,
+    payment_method: 'PIX',
+    notes: null,
+    ...overrides,
+  }
+}
+
 function finance(overrides: Partial<EventFinanceData> = {}): EventFinanceData {
   return {
     id: 'finance-1',
@@ -29,6 +48,7 @@ function finance(overrides: Partial<EventFinanceData> = {}): EventFinanceData {
     received_amount: 0,
     notes: null,
     items: [],
+    payments: [],
     ...overrides,
   }
 }
@@ -118,6 +138,37 @@ describe('computeEventFinance', () => {
     expect(totals.costByCategory.transporte).toBe(150)
     expect(totals.costByCategory.hospedagem).toBe(200)
     expect(totals.costTotal).toBe(350)
+  })
+})
+
+describe('computeReceivedAmount', () => {
+  it('evento antigo sem recebimentos: preserva o valor histórico de received_amount', () => {
+    const f = finance({ received_amount: 4200, payments: [] })
+    expect(computeReceivedAmount(f)).toBe(4200)
+  })
+
+  it('evento com recebimentos registrados: soma os recebimentos, ignorando o valor legado', () => {
+    const f = finance({
+      received_amount: 999, // valor legado antigo — não deve ser somado nem usado
+      payments: [payment({ amount: 5000 }), payment({ id: 'p2', amount: 3000 }), payment({ id: 'p3', amount: 7000 })],
+    })
+    expect(computeReceivedAmount(f)).toBe(15000)
+  })
+
+  it('exemplo do enunciado: receita 18800, recebimentos 5000+3000+7000 => recebido 15000, a receber 3800', () => {
+    const f = finance({
+      expected_revenue: 18800,
+      received_amount: 0,
+      payments: [payment({ amount: 5000 }), payment({ id: 'p2', amount: 3000 }), payment({ id: 'p3', amount: 7000 })],
+    })
+    const totals = computeEventFinance(f)
+    expect(totals.received).toBe(15000)
+    expect(totals.receivable).toBe(3800)
+  })
+
+  it('um único recebimento também substitui o valor legado (sem duplicar)', () => {
+    const f = finance({ received_amount: 500, payments: [payment({ amount: 1000 })] })
+    expect(computeReceivedAmount(f)).toBe(1000)
   })
 })
 
