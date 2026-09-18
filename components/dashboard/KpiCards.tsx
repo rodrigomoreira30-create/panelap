@@ -11,7 +11,7 @@ function fmt(value: number) {
 export function KpiCards({ kpi }: Props) {
   const pipelineCards = [
     { label: 'Leads abertos',        value: kpi.leadsAbertos.toString(), accent: 'bg-blue-500' },
-    { label: 'Faturamento previsto',  value: fmt(kpi.faturamentoPrevisto), accent: 'bg-emerald-500' },
+    { label: 'Faturamento Previsto Atrações', value: fmt(kpi.faturamentoPrevisto), accent: 'bg-emerald-500' },
     { label: 'Leads novos no período', value: kpi.leadsNovos.toString(),  accent: 'bg-violet-500' },
   ]
 
