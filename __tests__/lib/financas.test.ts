@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   computeEventFinance,
   computeReceivedAmount,
+  calcTotals,
   resolveItemAmount,
   type EventFinanceData,
   type FinanceItemData,
@@ -169,6 +170,39 @@ describe('computeReceivedAmount', () => {
   it('um único recebimento também substitui o valor legado (sem duplicar)', () => {
     const f = finance({ received_amount: 500, payments: [payment({ amount: 1000 })] })
     expect(computeReceivedAmount(f)).toBe(1000)
+  })
+})
+
+describe('inconsistência Evento x Finanças geral — regressão do caso "Antonio"', () => {
+  it('Cenário A — evento antigo sem EventPayment: usa received_amount legado', () => {
+    const f = finance({ expected_revenue: 10000, received_amount: 5000, payments: [] })
+    const totals = computeEventFinance(f)
+    expect(totals.received).toBe(5000)
+    expect(totals.receivable).toBe(5000)
+  })
+
+  it('Cenário B — evento "Antonio": receita 18800, received_amount legado 15000, recebimentos 3800+15000 => recebido 18800, a receber 0', () => {
+    const f = finance({
+      expected_revenue: 18800,
+      received_amount: 15000, // valor legado desatualizado — não deve ser usado nem somado
+      payments: [payment({ id: 'p1', amount: 3800 }), payment({ id: 'p2', amount: 15000 })],
+    })
+    const totals = computeEventFinance(f)
+    expect(totals.received).toBe(18800)
+    expect(totals.receivable).toBe(0)
+  })
+
+  it('Cenário C — calcTotals soma corretamente o "Recebido" de vários eventos do mês (misturando legado e EventPayment)', () => {
+    const eventoAntigo = finance({
+      id: 'f-antigo', expected_revenue: 10000, received_amount: 5000, payments: [],
+    })
+    const eventoAntonio = finance({
+      id: 'f-antonio', expected_revenue: 18800, received_amount: 15000,
+      payments: [payment({ id: 'p1', amount: 3800 }), payment({ id: 'p2', amount: 15000 })],
+    })
+    const totals = calcTotals([eventoAntigo, eventoAntonio])
+    expect(totals.totalReceived).toBe(5000 + 18800)
+    expect(totals.totalToReceive).toBe((10000 - 5000) + (18800 - 18800))
   })
 })
 
