@@ -197,7 +197,9 @@ export function FinanceTable({ finances, onFinanceDeleted }: FinanceTableProps) 
                           </td>
                         )
                       })}
-                      <td className="bg-gray-50" />
+                      <td className="px-3 py-2 text-right text-red-600 tabular-nums bg-gray-50">
+                        {fmt(resolveItemAmount(item, f.expected_revenue))}
+                      </td>
                     </tr>
                   ))
               )}

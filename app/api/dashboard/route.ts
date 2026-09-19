@@ -3,20 +3,11 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/prisma'
 import { EventStatus } from '@/lib/generated/prisma/enums'
+import { computeReceivedAmount } from '@/lib/financas'
 
 // 'closed'/'lost' — default pipeline terminal stages
 // 'closed_won'/'closed_lost' — common custom pipeline terminal stage names
 const CLOSED_STATUSES = ['closed', 'lost', 'closed_won', 'closed_lost']
-
-/** Mesma regra de compatibilidade de `computeReceivedAmount` (lib/financas.ts),
- * aplicada a uma consulta Prisma parcial (apenas os campos selecionados aqui). */
-function financeReceivedAmount(f: {
-  received_amount: { toString(): string }
-  payments: { amount: { toString(): string } }[]
-}): number {
-  if (f.payments.length === 0) return parseFloat(f.received_amount.toString())
-  return f.payments.reduce((s, p) => s + parseFloat(p.amount.toString()), 0)
-}
 
 const DEFAULT_STAGES = [
   { key: 'new_lead',      label: 'Novo Lead' },
@@ -130,7 +121,7 @@ export async function GET(request: Request) {
     select: { expected_revenue: true, received_amount: true, payments: { select: { amount: true } } },
   })
   const aReceber30dias = financesNext30.reduce((s, f) => {
-    const saldo = parseFloat(f.expected_revenue.toString()) - financeReceivedAmount(f)
+    const saldo = parseFloat(f.expected_revenue.toString()) - computeReceivedAmount(f)
     return s + Math.max(0, saldo)
   }, 0)
 
@@ -141,7 +132,7 @@ export async function GET(request: Request) {
     where: { band_id: bandId, event_date: { gte: inicioMes, lte: fimMes } },
     select: { expected_revenue: true, received_amount: true, payments: { select: { amount: true } } },
   })
-  const recebidoMes = financesMes.reduce((s, f) => s + financeReceivedAmount(f), 0)
+  const recebidoMes = financesMes.reduce((s, f) => s + computeReceivedAmount(f), 0)
   const previstMes  = financesMes.reduce((s, f) => s + parseFloat(f.expected_revenue.toString()), 0)
 
   // Próximos eventos

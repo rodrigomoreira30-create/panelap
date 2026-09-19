@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { leadUpdateSchema } from '@/lib/validations/lead'
 import { eventBus } from '@/lib/events/internal-bus'
 import { getDefaultChecklist } from '@/lib/production/default-checklists'
+import { computeReceivedAmount } from '@/lib/financas'
 
 async function getSessionUser() {
   const supabase = await createClient()
@@ -137,9 +138,7 @@ export async function DELETE(
       include: { finance: { include: { items: true, payments: true } } },
     })
     if (event?.finance) {
-      const received = event.finance.payments.length > 0
-        ? event.finance.payments.reduce((s, p) => s + parseFloat(p.amount.toString()), 0)
-        : parseFloat(event.finance.received_amount.toString())
+      const received = computeReceivedAmount(event.finance)
       const hasPaidItems = event.finance.items.some(i => i.paid)
       if ((received > 0 || hasPaidItems) && !force) {
         return NextResponse.json({

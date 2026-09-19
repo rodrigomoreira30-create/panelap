@@ -105,24 +105,48 @@ export function parseBR(raw: string): number {
   return parseFloat(raw.trim().replace(/\./g, '').replace(',', '.'))
 }
 
+/** Um valor monetário como ele chega cru do Prisma (Decimal, com `toString()`)
+ * ou já convertido para `number` (ex.: depois de `serializeFinance`). Usar `Number(x)`
+ * funciona igual para os dois casos, permitindo que a mesma função sirva tanto
+ * dados já serializados (EventFinanceData) quanto resultados de `select` parciais. */
+type DecimalLike = number | { toString(): string }
+
 /** Valor recebido "vivo" de um evento: se já existe pelo menos um recebimento
  * registrado no histórico (EventPayment), a soma deles é a fonte da verdade.
  * Caso contrário, preserva o valor legado gravado manualmente em `received_amount`
- * (compatibilidade com eventos antigos, sem risco de duplicar receita). */
-export function computeReceivedAmount(finance: Pick<EventFinanceData, 'received_amount' | 'payments'>): number {
-  if (finance.payments.length === 0) return finance.received_amount
-  return round2(finance.payments.reduce((s, p) => s + p.amount, 0))
+ * (compatibilidade com eventos antigos, sem risco de duplicar receita).
+ *
+ * Única fonte de verdade para "valor recebido" no sistema — reutilizada pelo
+ * Financeiro do evento, pelo Financeiro Geral e pelo Dashboard. */
+export function computeReceivedAmount(finance: {
+  received_amount: DecimalLike
+  payments: { amount: DecimalLike }[]
+}): number {
+  if (finance.payments.length === 0) return Number(finance.received_amount)
+  return round2(finance.payments.reduce((s, p) => s + Number(p.amount), 0))
 }
 
+/** Totais agregados de uma lista de eventos (Financeiro Geral, Dashboard), somando
+ * diretamente os valores já computados por `computeEventFinance()` de cada evento —
+ * garante que o consolidado seja sempre igual à soma exata do que aparece na aba
+ * Financeiro de cada evento individualmente, sem recalcular por outra via. */
 export function calcTotals(finances: EventFinanceData[]) {
-  const totalRevenue   = finances.reduce((s, f) => s + f.expected_revenue, 0)
-  const totalReceived  = finances.reduce((s, f) => s + computeReceivedAmount(f), 0)
-  const totalToReceive = totalRevenue - totalReceived
-  const totalCosts     = finances.reduce(
-    (s, f) => s + computeEventFinance(f).costTotal, 0
-  )
-  const totalProfit    = totalRevenue - totalCosts
-  const margin         = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0
+  let totalRevenue = 0
+  let totalReceived = 0
+  let totalToReceive = 0
+  let totalCosts = 0
+  let totalProfit = 0
+
+  for (const f of finances) {
+    const t = computeEventFinance(f)
+    totalRevenue   += t.revenueForecast
+    totalReceived  += t.received
+    totalToReceive += t.receivable
+    totalCosts     += t.costTotal
+    totalProfit    += t.profit
+  }
+
+  const margin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0
   return { totalRevenue, totalReceived, totalToReceive, totalCosts, totalProfit, margin }
 }
 

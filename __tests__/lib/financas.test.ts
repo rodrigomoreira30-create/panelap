@@ -206,6 +206,97 @@ describe('inconsistência Evento x Finanças geral — regressão do caso "Anton
   })
 })
 
+describe('validação cruzada Financeiro do evento ↔ Financeiro Geral (padronização)', () => {
+  it('Cenário 1 — recebimentos 3800+15000 sobre receita 18800: evento e agregado batem em recebido e a receber', () => {
+    const f = finance({
+      expected_revenue: 18800,
+      received_amount: 15000,
+      payments: [payment({ id: 'p1', amount: 3800 }), payment({ id: 'p2', amount: 15000 })],
+    })
+    const evento = computeEventFinance(f)
+    const geral = calcTotals([f])
+    expect(evento.received).toBe(18800)
+    expect(evento.receivable).toBe(0)
+    expect(geral.totalReceived).toBe(evento.received)
+    expect(geral.totalToReceive).toBe(evento.receivable)
+  })
+
+  it('Cenário 2 — adicionar "Outros custos" de R$500 aumenta custos e reduz lucro igualmente no evento e no Financeiro Geral', () => {
+    const antes = finance({
+      expected_revenue: 10000,
+      items: [item({ id: 'outros', category: 'outros', amount: 0 })],
+    })
+    const depois = finance({
+      expected_revenue: 10000,
+      items: [item({ id: 'outros', category: 'outros', amount: 500 })],
+    })
+
+    const eventoAntes  = computeEventFinance(antes)
+    const eventoDepois = computeEventFinance(depois)
+    const geralAntes   = calcTotals([antes])
+    const geralDepois  = calcTotals([depois])
+
+    expect(eventoDepois.costTotal - eventoAntes.costTotal).toBe(500)
+    expect(geralDepois.totalCosts - geralAntes.totalCosts).toBe(500)
+    expect(eventoAntes.profit - eventoDepois.profit).toBe(500)
+    expect(geralAntes.totalProfit - geralDepois.totalProfit).toBe(500)
+    // O Financeiro Geral bate exatamente com o evento, não é uma fórmula paralela
+    expect(geralDepois.totalCosts).toBe(eventoDepois.costTotal)
+    expect(geralDepois.totalProfit).toBe(eventoDepois.profit)
+  })
+
+  it('Cenário 3 — alterar cachê de músico de 500 para 700 aumenta custos em 200 no evento e no Financeiro Geral', () => {
+    const antes = finance({
+      expected_revenue: 10000,
+      items: [item({ id: 'cache-1', category: 'cache_musico', label: 'Bateria — André', amount: 500 })],
+    })
+    const depois = finance({
+      expected_revenue: 10000,
+      items: [item({ id: 'cache-1', category: 'cache_musico', label: 'Bateria — André', amount: 700 })],
+    })
+
+    const eventoAntes  = computeEventFinance(antes)
+    const eventoDepois = computeEventFinance(depois)
+    const geralAntes   = calcTotals([antes])
+    const geralDepois  = calcTotals([depois])
+
+    expect(eventoDepois.costTotal - eventoAntes.costTotal).toBe(200)
+    expect(geralDepois.totalCosts - geralAntes.totalCosts).toBe(200)
+    expect(geralDepois.totalCosts).toBe(eventoDepois.costTotal)
+    expect(geralDepois.totalProfit).toBe(eventoDepois.profit)
+  })
+
+  it('Cenário 4 — evento antigo usando received_amount legado continua correto no evento e no Financeiro Geral', () => {
+    const f = finance({ expected_revenue: 10000, received_amount: 4200, payments: [] })
+    const evento = computeEventFinance(f)
+    const geral = calcTotals([f])
+    expect(evento.received).toBe(4200)
+    expect(geral.totalReceived).toBe(4200)
+  })
+
+  it('Cenário 5 — vários eventos no mês: cards do Financeiro Geral somam exatamente os valores computados de cada evento', () => {
+    const eventoA = finance({
+      id: 'a', expected_revenue: 10000, received_amount: 5000, payments: [],
+      items: [item({ id: 'ia', category: 'outros', amount: 1000 })],
+    })
+    const eventoB = finance({
+      id: 'b', expected_revenue: 18800, received_amount: 15000,
+      payments: [payment({ id: 'pb1', amount: 3800 }), payment({ id: 'pb2', amount: 15000 })],
+      items: [item({ id: 'ib', category: 'cache_musico', amount: 700 })],
+    })
+
+    const totaisA = computeEventFinance(eventoA)
+    const totaisB = computeEventFinance(eventoB)
+    const geral = calcTotals([eventoA, eventoB])
+
+    expect(geral.totalRevenue).toBe(totaisA.revenueForecast + totaisB.revenueForecast)
+    expect(geral.totalReceived).toBe(totaisA.received + totaisB.received)
+    expect(geral.totalToReceive).toBe(totaisA.receivable + totaisB.receivable)
+    expect(geral.totalCosts).toBe(totaisA.costTotal + totaisB.costTotal)
+    expect(geral.totalProfit).toBe(totaisA.profit + totaisB.profit)
+  })
+})
+
 describe('resolveItemAmount', () => {
   it('sem percentual, retorna o amount gravado', () => {
     expect(resolveItemAmount(item({ amount: 42 }), 1000)).toBe(42)
