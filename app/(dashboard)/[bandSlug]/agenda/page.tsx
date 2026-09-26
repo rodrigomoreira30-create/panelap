@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import { CalendarView } from '@/components/agenda/CalendarView'
 import { PendingConfirmations } from '@/components/agenda/PendingConfirmations'
+import { buildCalendarItems } from '@/lib/agenda/calendar-items'
+import { CALENDAR_COLORS } from '@/lib/agenda/calendar-status'
 
 export default async function AgendaPage({
   params,
@@ -34,6 +36,7 @@ export default async function AgendaPage({
         event_date: { gte: monthStart, lte: monthEnd },
       },
       include: {
+        lead: { select: { status: true } },
         event_musicians: { include: { user: { select: { id: true, name: true } } } },
       },
       orderBy: { event_date: 'asc' },
@@ -62,36 +65,7 @@ export default async function AgendaPage({
     }),
   ])
 
-  const calendarEvents = [
-    ...events.map(e => ({
-      id:    e.id,
-      title: e.client_name,
-      start: e.event_date,
-      end:   e.event_date,
-      resource: {
-        kind:      'event' as const,
-        status:    e.status,
-        eventType: e.event_type,
-        venue:     e.venue_name,
-        musicians: e.event_musicians
-          .map(em => em.user?.name)
-          .filter((n): n is string => n != null),
-      },
-    })),
-    ...leads.map(l => ({
-      id:    l.id,
-      title: l.client_name,
-      start: l.event_date!,
-      end:   l.event_date!,
-      resource: {
-        kind:      'lead' as const,
-        status:    l.status,
-        eventType: l.event_type,
-        venue:     l.venue_name ?? null,
-        musicians: [] as string[],
-      },
-    })),
-  ]
+  const calendarEvents = buildCalendarItems(events, leads)
 
   return (
     <div className="p-6 space-y-6">
@@ -99,12 +73,16 @@ export default async function AgendaPage({
         <h1 className="text-2xl font-bold">Agenda</h1>
         <div className="flex items-center gap-4 text-sm text-gray-500">
           <span className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-full bg-blue-500 inline-block" />
+            <span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: CALENDAR_COLORS.blue }} />
             Evento contratado
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-full bg-amber-400 inline-block" />
+            <span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: CALENDAR_COLORS.orange }} />
             Orçamento em aberto
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: CALENDAR_COLORS.gray }} />
+            Evento realizado/passado
           </span>
         </div>
       </div>

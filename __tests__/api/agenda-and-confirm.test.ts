@@ -9,6 +9,7 @@ vi.mock('@/lib/auth/session', () => ({
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     event: { findMany: vi.fn() },
+    lead: { findMany: vi.fn() },
     eventMusician: {
       findUnique: vi.fn(),
       update: vi.fn(),
@@ -28,8 +29,10 @@ const mockMusicianParams = Promise.resolve({ id: 'em-1' })
 
 // ── Test 1: GET /api/agenda — returns calendar events for current month ──────────
 describe('GET /api/agenda', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks()
+    const { prisma } = await import('@/lib/prisma')
+    vi.mocked(prisma.lead.findMany).mockResolvedValue([] as any)
   })
 
   it('returns calendar events for the current month', async () => {
@@ -44,6 +47,7 @@ describe('GET /api/agenda', () => {
         status: 'contracted',
         event_type: 'show',
         event_date: new Date('2026-05-15'),
+        lead: { status: 'closed' },
         event_musicians: [
           { user: { id: 'user-2', name: 'Musician One' } },
         ],
@@ -58,7 +62,7 @@ describe('GET /api/agenda', () => {
     const json = await response.json()
     expect(json.data).toHaveLength(1)
     expect(json.data[0].id).toBe('event-1')
-    expect(json.data[0].title).toBe('Test Client — Test Venue')
+    expect(json.data[0].title).toBe('Test Client')
     expect(json.data[0].resource.musicians).toContain('Musician One')
     expect(vi.mocked(prisma.event.findMany)).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -70,8 +74,10 @@ describe('GET /api/agenda', () => {
 
 // ── Test 2: GET /api/agenda — filters by year/month query params ─────────────────
 describe('GET /api/agenda — year/month filter', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks()
+    const { prisma } = await import('@/lib/prisma')
+    vi.mocked(prisma.lead.findMany).mockResolvedValue([] as any)
   })
 
   it('filters events by year and month query params', async () => {
@@ -86,6 +92,7 @@ describe('GET /api/agenda — year/month filter', () => {
         status: 'contracted',
         event_type: 'show',
         event_date: new Date('2026-08-10'),
+        lead: { status: 'closed' },
         event_musicians: [],
       },
     ]
@@ -103,12 +110,57 @@ describe('GET /api/agenda — year/month filter', () => {
         where: expect.objectContaining({
           band_id: 'band-1',
           event_date: {
-            gte: new Date(2026, 7, 1),
-            lte: new Date(2026, 8, 0, 23, 59, 59),
+            gte: new Date(Date.UTC(2026, 7, 1)),
+            lte: new Date(Date.UTC(2026, 8, 0, 23, 59, 59, 999)),
           },
         }),
       })
     )
+  })
+})
+
+// ── Cores da agenda: a rota precisa entregar a etapa do lead ─────────────────────
+describe('GET /api/agenda — dados para a cor dos cards', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('evento com Event.status "done" e lead fechado chega com leadStage "closed" e o dia do calendário', async () => {
+    const { prisma } = await import('@/lib/prisma')
+    vi.mocked(prisma.event.findMany).mockResolvedValueOnce([
+      {
+        id: 'event-3', client_name: 'Helena e João Pedro', venue_name: 'Espaço', status: 'done',
+        event_type: 'wedding', event_date: new Date('2026-09-26T00:00:00.000Z'),
+        lead: { status: 'closed' }, event_musicians: [],
+      },
+    ] as any)
+    vi.mocked(prisma.lead.findMany).mockResolvedValueOnce([] as any)
+
+    const json = await (await GET_AGENDA(makeRequest('GET', 'http://localhost:3000/api/agenda?year=2026&month=9'))).json()
+
+    expect(json.data[0].resource.leadStage).toBe('closed')
+    expect(json.data[0].resource.dateKey).toBe('2026-09-26')
+    expect(vi.mocked(prisma.event.findMany)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: expect.objectContaining({ lead: { select: { status: true } } }),
+      })
+    )
+  })
+
+  it('lead em aberto chega com leadStage igual à etapa do pipeline', async () => {
+    const { prisma } = await import('@/lib/prisma')
+    vi.mocked(prisma.event.findMany).mockResolvedValueOnce([] as any)
+    vi.mocked(prisma.lead.findMany).mockResolvedValueOnce([
+      {
+        id: 'lead-9', client_name: 'Siemens', status: 'new_lead', event_type: 'corporate',
+        event_date: new Date('2026-12-11T00:00:00.000Z'), venue_name: null,
+      },
+    ] as any)
+
+    const json = await (await GET_AGENDA(makeRequest('GET', 'http://localhost:3000/api/agenda?year=2026&month=12'))).json()
+
+    expect(json.data[0].resource.kind).toBe('lead')
+    expect(json.data[0].resource.leadStage).toBe('new_lead')
   })
 })
 

@@ -6,14 +6,10 @@ import { Calendar, dateFnsLocalizer, type View } from 'react-big-calendar'
 import { format, parse, startOfWeek, getDay } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
+import { CALENDAR_COLORS, getCalendarEventColor, toLocalDate } from '@/lib/agenda/calendar-status'
+import type { CalendarItemData } from '@/lib/agenda/calendar-items'
 
 const locales = { 'pt-BR': ptBR }
-
-function toLocalDate(v: Date | string): Date {
-  const iso = v instanceof Date ? v.toISOString() : v
-  const [y, m, d] = iso.slice(0, 10).split('-').map(Number)
-  return new Date(y, m - 1, d)
-}
 
 const localizer = dateFnsLocalizer({
   format,
@@ -24,19 +20,7 @@ const localizer = dateFnsLocalizer({
   locales,
 })
 
-export type CalendarItem = {
-  id: string
-  title: string
-  start: Date
-  end: Date
-  resource: {
-    kind: 'event' | 'lead'
-    status: string
-    eventType: string
-    venue: string | null
-    musicians: string[]
-  }
-}
+export type CalendarItem = CalendarItemData
 
 interface CalendarViewProps {
   initialEvents: CalendarItem[]
@@ -84,21 +68,14 @@ export function CalendarView({ initialEvents, bandSlug }: CalendarViewProps) {
   }
 
   const eventStyleGetter = useCallback((item: CalendarItem) => {
-    const isLead = item.resource.kind === 'lead'
-
-    const eventColors: Record<string, string> = {
-      contracted: '#3b82f6',
-      active:     '#f97316',
-      done:       '#9ca3af',
-    }
-
-    const bg = isLead
-      ? '#f59e0b'
-      : (eventColors[item.resource.status] ?? '#6b7280')
+    const color = getCalendarEventColor({
+      date: item.resource.dateKey,
+      leadStage: item.resource.leadStage,
+    })
 
     return {
       style: {
-        backgroundColor: bg,
+        backgroundColor: CALENDAR_COLORS[color],
         borderRadius: '4px',
         border: 'none',
         color: 'white',

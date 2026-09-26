@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSessionUser } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
+import { buildCalendarItems } from '@/lib/agenda/calendar-items'
 
 export async function GET(request: Request) {
   const sessionUser = await getSessionUser()
@@ -20,6 +21,8 @@ export async function GET(request: Request) {
         event_date: { gte: start, lte: end },
       },
       include: {
+        // Etapa do lead no pipeline: é ela que diz se o evento está "fechado" (cor azul)
+        lead: { select: { status: true } },
         event_musicians: {
           include: { user: { select: { id: true, name: true } } },
         },
@@ -36,36 +39,7 @@ export async function GET(request: Request) {
     }),
   ])
 
-  const calendarEvents = [
-    ...events.map(e => ({
-      id:    e.id,
-      title: e.client_name,
-      start: e.event_date,
-      end:   e.event_date,
-      resource: {
-        kind:      'event' as const,
-        status:    e.status,
-        eventType: e.event_type,
-        venue:     e.venue_name,
-        musicians: e.event_musicians
-          .map(em => em.user?.name)
-          .filter((n): n is string => n != null),
-      },
-    })),
-    ...leads.map(l => ({
-      id:    l.id,
-      title: l.client_name,
-      start: l.event_date!,
-      end:   l.event_date!,
-      resource: {
-        kind:      'lead' as const,
-        status:    l.status,
-        eventType: l.event_type,
-        venue:     l.venue_name ?? null,
-        musicians: [] as string[],
-      },
-    })),
-  ]
+  const calendarEvents = buildCalendarItems(events, leads)
 
   return NextResponse.json({ data: calendarEvents })
 }
