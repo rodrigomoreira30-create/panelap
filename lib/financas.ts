@@ -152,6 +152,15 @@ export function calcTotals(finances: EventFinanceData[]) {
 
 /** Valor "vivo" de um item: se tem percentual e não foi sobrescrito manualmente, é
  * sempre recalculado a partir da receita prevista; senão, usa o valor gravado. */
+/** Total da equipe: soma dos cachês de músicos/equipe (categoria cache_musico). */
+export function computeTeamTotal(items: { category: string; amount: number }[]): number {
+  return round2(
+    items
+      .filter(i => i.category === CACHE_MUSICO_CATEGORY)
+      .reduce((s, i) => s + i.amount, 0)
+  )
+}
+
 export function resolveItemAmount(item: FinanceItemData, revenueForecast: number): number {
   if (item.percent_of_revenue !== null && !item.is_overridden) {
     return round2((revenueForecast * item.percent_of_revenue) / 100)

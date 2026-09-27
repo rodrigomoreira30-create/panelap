@@ -163,3 +163,88 @@ describe('PATCH /api/event-musicians — sincronização de custo', () => {
     expect(syncMusicianCost).not.toHaveBeenCalled()
   })
 })
+
+describe('event-musicians — o sync do Financeiro é aguardado e não derruba a requisição', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  function seedPost() {
+    return import('@/lib/prisma').then(({ prisma }) => {
+      vi.mocked(prisma.user.findUnique).mockResolvedValueOnce({ role: 'admin' } as any)
+      vi.mocked(prisma.event.findFirst).mockResolvedValueOnce({
+        id: 'cevent000000000000000001', band_id: 'band-1', client_name: 'Cliente Teste', event_date: new Date('2026-01-01'),
+      } as any)
+      vi.mocked(prisma.eventMusician.create).mockResolvedValueOnce({
+        id: 'cem10000000000000000001', cache_value: 300, user_id: null, instrument: 'Baixo', user: null,
+      } as any)
+    })
+  }
+
+  it('POST só responde depois que o sync termina (sem promessa solta em serverless)', async () => {
+    const { syncMusicianCost } = await import('@/lib/finance-service')
+    await seedPost()
+    let syncFinished = false
+    vi.mocked(syncMusicianCost).mockImplementationOnce(
+      () => new Promise<'noop'>(resolve => setTimeout(() => { syncFinished = true; resolve('noop') }, 20))
+    )
+
+    const response = await POST(makePostRequest({ event_id: 'cevent000000000000000001', instrument: 'Baixo', cache_value: 300 }))
+
+    expect(response.status).toBe(201)
+    expect(syncFinished).toBe(true)
+  })
+
+  it('POST devolve 201 mesmo se o sync falhar (a atribuição já foi salva)', async () => {
+    const { syncMusicianCost } = await import('@/lib/finance-service')
+    await seedPost()
+    vi.mocked(syncMusicianCost).mockRejectedValueOnce(new Error('pool esgotado'))
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const response = await POST(makePostRequest({ event_id: 'cevent000000000000000001', instrument: 'Baixo', cache_value: 300 }))
+
+    expect(response.status).toBe(201)
+    expect(spy).toHaveBeenCalled()
+    spy.mockRestore()
+  })
+
+  it('PATCH só responde depois que o sync termina', async () => {
+    const { prisma } = await import('@/lib/prisma')
+    const { syncMusicianCost } = await import('@/lib/finance-service')
+    vi.mocked(prisma.user.findUnique).mockResolvedValueOnce({ role: 'admin' } as any)
+    vi.mocked(prisma.eventMusician.findUnique).mockResolvedValueOnce({
+      id: 'cem10000000000000000001', user_id: null,
+      event: { band_id: 'band-1', client_name: 'Cliente Teste', event_date: new Date('2026-01-01') },
+    } as any)
+    vi.mocked(prisma.eventMusician.update).mockResolvedValueOnce({ id: 'cem10000000000000000001', cache_value: 500, user: null } as any)
+    let syncFinished = false
+    vi.mocked(syncMusicianCost).mockImplementationOnce(
+      () => new Promise<'noop'>(resolve => setTimeout(() => { syncFinished = true; resolve('noop') }, 20))
+    )
+
+    const response = await PATCH(makePatchRequest({ id: 'cem10000000000000000001', cache_value: 500 }))
+
+    expect(response.status).toBe(200)
+    expect(syncFinished).toBe(true)
+  })
+
+  it('PATCH que apenas atribui um músico (sem cache_value no body) também sincroniza o Financeiro', async () => {
+    const { prisma } = await import('@/lib/prisma')
+    const { syncMusicianCost } = await import('@/lib/finance-service')
+    vi.mocked(prisma.user.findUnique).mockResolvedValueOnce({ role: 'admin' } as any)
+    vi.mocked(prisma.eventMusician.findUnique).mockResolvedValueOnce({
+      id: 'cem10000000000000000001', user_id: null,
+      event: { band_id: 'band-1', client_name: 'Cliente Teste', event_date: new Date('2026-01-01') },
+    } as any)
+    vi.mocked(prisma.user.findFirst).mockResolvedValueOnce({
+      name: 'Renanzinho Guita', email: 'r@x.com', schedule_token: 't',
+    } as any)
+    vi.mocked(prisma.eventMusician.update).mockResolvedValueOnce({
+      id: 'cem10000000000000000001', user_id: 'cuser0000000000000000001', user: { name: 'Renanzinho Guita' },
+    } as any)
+
+    const response = await PATCH(makePatchRequest({ id: 'cem10000000000000000001', user_id: 'cuser0000000000000000001' }))
+
+    expect(response.status).toBe(200)
+    expect(syncMusicianCost).toHaveBeenCalledWith('cem10000000000000000001')
+  })
+})
+

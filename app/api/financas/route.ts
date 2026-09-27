@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getSessionUser } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import { DEFAULT_FINANCE_ITEMS, serializeFinance } from '@/lib/financas'
+import { reconcileTeamCosts } from '@/lib/finance-service'
 
 export async function GET(request: Request) {
   const sessionUser = await getSessionUser()
@@ -13,6 +14,9 @@ export async function GET(request: Request) {
 
   const startDate = new Date(year, month - 1, 1)
   const endDate   = new Date(year, month, 0, 23, 59, 59)
+
+  // Custos de equipe vêm da Formação: garante as linhas antes de somar os custos do mês.
+  await reconcileTeamCosts({ bandId: sessionUser.band_id })
 
   const finances = await prisma.eventFinance.findMany({
     where: { band_id: sessionUser.band_id, event_date: { gte: startDate, lte: endDate } },

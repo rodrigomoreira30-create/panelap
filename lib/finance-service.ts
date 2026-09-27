@@ -61,9 +61,21 @@ function musicianLabel(instrument: string | null, userName: string | null): stri
   return userName ? `${base} — ${userName}` : base
 }
 
-/** Cria/atualiza a linha de custo `cache_musico` vinculada a um EventMusician,
- *  ou a remove se o cachê foi zerado (e ainda não estiver paga). */
-export async function syncMusicianCost(eventMusicianId: string): Promise<void> {
+export type MusicianCostOutcome = 'created' | 'updated' | 'removed' | 'noop'
+
+/** Garante que a atribuição da Formação tenha exatamente uma linha `cache_musico`
+ *  no Financeiro do evento.
+ *
+ *  A Formação é a fonte da verdade:
+ *  - músico/equipe atribuído COM cachê → tem linha, qualquer que seja a função e o status
+ *    de confirmação (pendente, confirmado ou recusado); o valor é o cachê da Formação;
+ *  - vaga aberta (sem músico) → nunca é custo de músico;
+ *  - sem cachê definido → sem linha (regra existente: a aba diz "Nenhum músico com cachê
+ *    definido na Formação"). Uma linha antiga ainda não paga é removida; a paga é mantida.
+ *
+ *  Checagem + criação rodam numa transação com lock consultivo por atribuição, para que
+ *  chamadas concorrentes (duas abas, refetch, sync + reconcile) não dupliquem a linha. */
+export async function syncMusicianCost(eventMusicianId: string): Promise<MusicianCostOutcome> {
   const em = await prisma.eventMusician.findUniqueOrThrow({
     where: { id: eventMusicianId },
     include: {
@@ -72,38 +84,87 @@ export async function syncMusicianCost(eventMusicianId: string): Promise<void> {
     },
   })
 
-  const existingItem = await prisma.eventFinanceItem.findFirst({
-    where: { event_musician_id: eventMusicianId },
-  })
-
-  if (em.cache_value === null) {
-    if (existingItem && !existingItem.paid) {
-      await prisma.eventFinanceItem.delete({ where: { id: existingItem.id } })
-    }
-    return
-  }
-
-  const label = musicianLabel(em.instrument, em.user?.name ?? null)
-
-  if (existingItem) {
-    await prisma.eventFinanceItem.update({
-      where: { id: existingItem.id },
-      data: { label, amount: em.cache_value },
+  const amount = em.cache_value
+  if (em.user_id === null || amount === null) {
+    const existing = await prisma.eventFinanceItem.findFirst({
+      where: { event_musician_id: eventMusicianId },
     })
-    return
+    if (existing && !existing.paid) {
+      await prisma.eventFinanceItem.delete({ where: { id: existing.id } })
+      return 'removed'
+    }
+    return 'noop'
   }
 
   const finance = await getOrCreateEventFinance(em.event.id)
-  await prisma.eventFinanceItem.create({
-    data: {
-      finance_id:         finance.id,
-      category:           CACHE_MUSICO_CATEGORY,
-      label,
-      amount:             em.cache_value,
-      paid:               false,
-      event_musician_id:  eventMusicianId,
-    },
+  const label = musicianLabel(em.instrument, em.user?.name ?? null)
+
+  return prisma.$transaction(async tx => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${eventMusicianId}))`
+
+    const existingItem = await tx.eventFinanceItem.findFirst({
+      where: { event_musician_id: eventMusicianId },
+    })
+
+    if (existingItem) {
+      await tx.eventFinanceItem.update({
+        where: { id: existingItem.id },
+        data: { label, amount },
+      })
+      return 'updated' as const
+    }
+
+    await tx.eventFinanceItem.create({
+      data: {
+        finance_id:         finance.id,
+        category:           CACHE_MUSICO_CATEGORY,
+        label,
+        amount,
+        paid:               false,
+        event_musician_id:  eventMusicianId,
+      },
+    })
+    return 'created' as const
   })
+}
+
+/** Cura atribuições da Formação (com cachê) que ficaram sem linha no Financeiro (sync que falhou ou
+ *  atribuição anterior à sincronização). Só cria o que falta: nunca sobrescreve valores
+ *  existentes, então ajustes manuais no Financeiro são preservados.
+ *
+ *  Sem `eventId`, cobre a banda toda, mas apenas eventos que já têm registro financeiro
+ *  (não cria financeiro para eventos que ainda não foram para o Financeiro).
+ *  Nunca lança: uma falha aqui não deve derrubar a tela que está lendo os custos. */
+export async function reconcileTeamCosts(
+  scope: { bandId: string; eventId?: string }
+): Promise<number> {
+  let created = 0
+  try {
+    const missing = await prisma.eventMusician.findMany({
+      where: {
+        user_id: { not: null },
+        cache_value: { not: null },
+        finance_items: { none: {} },
+        event: {
+          band_id: scope.bandId,
+          ...(scope.eventId && { id: scope.eventId }),
+          finance: { isNot: null },
+        },
+      },
+      select: { id: true },
+    })
+
+    for (const { id } of missing) {
+      try {
+        if ((await syncMusicianCost(id)) === 'created') created++
+      } catch (err) {
+        console.error('[financas] Falha ao curar custo de cachê da Formação:', id, err)
+      }
+    }
+  } catch (err) {
+    console.error('[financas] Falha ao verificar equipe da Formação sem custo:', err)
+  }
+  return created
 }
 
 /** Remove a linha de custo vinculada a um músico. Retorna `blocked: true` sem

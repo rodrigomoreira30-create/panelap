@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getSessionUser } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import { serializeFinance, computeEventFinance } from '@/lib/financas'
-import { getOrCreateEventFinance } from '@/lib/finance-service'
+import { getOrCreateEventFinance, reconcileTeamCosts } from '@/lib/finance-service'
 
 export async function GET(
   _req: Request,
@@ -17,7 +17,12 @@ export async function GET(
   })
   if (!event) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const finance = await getOrCreateEventFinance(eventId)
+  let finance = await getOrCreateEventFinance(eventId)
+
+  // A Formação é a fonte da verdade da equipe: cria as linhas que faltarem e relê.
+  const healed = await reconcileTeamCosts({ bandId: sessionUser.band_id, eventId })
+  if (healed > 0) finance = await getOrCreateEventFinance(eventId)
+
   const data = serializeFinance(finance)
 
   return NextResponse.json({ data, totals: computeEventFinance(data) })

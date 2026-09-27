@@ -18,6 +18,17 @@ const assignSchema = z.object({
   cache_value: z.number().optional().nullable(),
 })
 
+// O sync do Financeiro é aguardado: em serverless, uma promessa solta pode ser cortada
+// quando a resposta sai, deixando a Formação sem linha no Financeiro. Se falhar, a
+// atribuição já está salva e reconcileTeamCosts cura na próxima leitura do Financeiro.
+async function syncCostSafely(eventMusicianId: string) {
+  try {
+    await syncMusicianCost(eventMusicianId)
+  } catch (err) {
+    console.error('[financas] Falha ao sincronizar custo de cachê:', err)
+  }
+}
+
 async function getAdminOrProducer() {
   const sessionUser = await getSessionUser()
   if (!sessionUser) return null
@@ -62,7 +73,7 @@ export async function POST(request: Request) {
     include: { user: { select: { id: true, name: true, avatar_url: true, schedule_token: true } } },
   })
 
-  syncMusicianCost(em.id).catch(err => console.error('[financas] Falha ao sincronizar custo de cachê:', err))
+  await syncCostSafely(em.id)
 
   if (musician) {
     sendEventInviteEmail({
@@ -115,8 +126,8 @@ export async function PATCH(request: Request) {
     include: { user: { select: { id: true, name: true, avatar_url: true, schedule_token: true } } },
   })
 
-  if ('cache_value' in parsed.data) {
-    syncMusicianCost(updated.id).catch(err => console.error('[financas] Falha ao sincronizar custo de cachê:', err))
+  if ('cache_value' in parsed.data || isBeingAssigned) {
+    await syncCostSafely(updated.id)
   }
 
   if (wasVacant && isBeingAssigned && musician) {

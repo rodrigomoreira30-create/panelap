@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import { FinancasClient } from '@/components/financas/FinancasClient'
 import { serializeFinance } from '@/lib/financas'
+import { reconcileTeamCosts } from '@/lib/finance-service'
 
 export default async function FinancasPage({
   params,
@@ -29,6 +30,9 @@ export default async function FinancasPage({
 
   const startDate = new Date(year, month - 1, 1)
   const endDate   = new Date(year, month, 0, 23, 59, 59)
+
+  // Custos de equipe vêm da Formação: garante as linhas antes de somar os custos do mês.
+  await reconcileTeamCosts({ bandId: dbUser.band_id })
 
   const [finances, availableEvents] = await Promise.all([
     prisma.eventFinance.findMany({

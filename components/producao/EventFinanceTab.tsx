@@ -11,6 +11,7 @@ import {
   DEFAULT_FINANCE_ITEMS,
   PERCENT_ELIGIBLE_CATEGORIES,
   CACHE_MUSICO_CATEGORY,
+  computeTeamTotal,
   resolveItemAmount,
   type EventFinanceData,
   type EventFinanceTotals,
@@ -254,7 +255,7 @@ export function EventFinanceTab({ eventoId }: { eventoId: string }) {
           </div>
         )}
         <p className="text-xs text-gray-500 mt-2">
-          Total da equipe: R$ {fmt(musicianItems.reduce((s, i) => s + i.amount, 0))}
+          Total da equipe: R$ {fmt(computeTeamTotal(finance.items))}
         </p>
       </div>
 
