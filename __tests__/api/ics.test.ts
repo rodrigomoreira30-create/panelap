@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { generateICS } from '@/lib/ics'
 
 describe('generateICS', () => {
@@ -73,5 +73,30 @@ describe('generateICS', () => {
   it('usa CRLF como separador de linhas', () => {
     const result = generateICS('Teste', [])
     expect(result).toContain('BEGIN:VCALENDAR\r\nVERSION:2.0')
+  })
+})
+
+// ── GET /api/ics/[token] — mesma regra "hoje ou futuro" da agenda individual ─────
+describe('GET /api/ics/[token]', () => {
+  it('filtra por getScheduleCutoffDate (não pelo instante exato de "agora"): evento de hoje não é excluído', async () => {
+    vi.resetModules()
+    vi.doMock('@/lib/prisma', () => ({
+      prisma: { user: { findUnique: vi.fn().mockResolvedValue({ name: 'André', event_musicians: [] }) } },
+    }))
+
+    const { GET } = await import('@/app/api/ics/[token]/route')
+    const { prisma } = await import('@/lib/prisma')
+    const { getScheduleCutoffDate } = await import('@/lib/production/musician-schedule')
+
+    await GET(new Request('http://localhost/api/ics/tok'), { params: Promise.resolve({ token: 'tok' }) })
+
+    const call = vi.mocked(prisma.user.findUnique).mock.calls[0][0] as any
+    const usedCutoff: Date = call.select.event_musicians.where.event.event_date.gte
+    // getScheduleCutoffDate() sem argumento usa o "agora" real — comparamos com uma
+    // chamada feita no mesmo instante do teste (a granularidade é o dia, não o milissegundo).
+    expect(usedCutoff.toISOString()).toBe(getScheduleCutoffDate().toISOString())
+    expect(usedCutoff.getUTCHours()).toBe(0) // meia-noite UTC — nunca o instante exato de "agora"
+
+    vi.doUnmock('@/lib/prisma')
   })
 })

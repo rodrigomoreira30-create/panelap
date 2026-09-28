@@ -5,7 +5,11 @@ import { notFound } from 'next/navigation'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Calendar, MapPin, Music, Download, Banknote } from 'lucide-react'
-import { formatCacheValue } from '@/lib/production/musician-schedule'
+import {
+  formatCacheValue,
+  getScheduleCutoffDate,
+  groupScheduleByMonth,
+} from '@/lib/production/musician-schedule'
 
 const eventTypeLabels: Record<string, string> = {
   wedding: 'Casamento', party: 'Festa', show: 'Show',
@@ -30,7 +34,7 @@ export default async function MusicianSchedulePage({
     select: {
       name: true,
       event_musicians: {
-        where: { event: { event_date: { gte: new Date() } } },
+        where: { event: { event_date: { gte: getScheduleCutoffDate() } } },
         select: {
           id: true,
           status: true,
@@ -53,20 +57,7 @@ export default async function MusicianSchedulePage({
 
   if (!musician) notFound()
 
-  // Agrupar eventos por mês
-  type EventMusician = typeof musician.event_musicians[number]
-  const monthGroups: { key: string; label: string; items: EventMusician[] }[] = []
-  for (const em of musician.event_musicians) {
-    const [y, m] = em.event.event_date.toISOString().slice(0, 7).split('-').map(Number)
-    const key = `${y}-${m}`
-    const label = format(new Date(y, m - 1, 1), 'MMMM yyyy', { locale: ptBR }).toUpperCase()
-    const last = monthGroups[monthGroups.length - 1]
-    if (last?.key === key) {
-      last.items.push(em)
-    } else {
-      monthGroups.push({ key, label, items: [em] })
-    }
-  }
+  const monthGroups = groupScheduleByMonth(musician.event_musicians)
 
   return (
     <main className="min-h-screen bg-gray-50">

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { generateICS, type ICSEvent } from '@/lib/ics'
+import { getScheduleCutoffDate } from '@/lib/production/musician-schedule'
 
 export async function GET(
   _: Request,
@@ -14,7 +15,7 @@ export async function GET(
       select: {
         name: true,
         event_musicians: {
-          where: { event: { event_date: { gte: new Date() } } },
+          where: { event: { event_date: { gte: getScheduleCutoffDate() } } },
           select: {
             id: true,
             status: true,
