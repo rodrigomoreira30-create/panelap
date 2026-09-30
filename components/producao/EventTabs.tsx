@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Calendar, Clock, MapPin, Users } from 'lucide-react'
@@ -10,6 +10,7 @@ import { EventDetailClient } from './EventDetailClient'
 import { EventDocuments } from './EventDocuments'
 import { EventAlignmentNotes } from './EventAlignmentNotes'
 import { EventFinanceTab } from './EventFinanceTab'
+import { shouldConfirmTabChange } from '@/lib/production/alignment-notes'
 
 const eventTypeLabels: Record<string, string> = {
   wedding: 'Casamento', party: 'Festa', show: 'Show',
@@ -114,6 +115,34 @@ export function EventTabs({
   initialNotes,
 }: EventTabsProps) {
   const [tab, setTab] = useState<Tab>('geral')
+  // "Alinhamentos do Evento" (aba Geral) agora salva só ao clicar em Salvar — se o usuário
+  // tentar trocar de aba com edição pendente, confirmamos antes de descartá-la.
+  const [alignmentNotesDirty, setAlignmentNotesDirty] = useState(false)
+
+  function handleTabChange(next: Tab) {
+    if (shouldConfirmTabChange(tab, next, alignmentNotesDirty)) {
+      const discard = window.confirm(
+        'Existem alterações não salvas em Alinhamentos do Evento.\n\n' +
+        'OK para descartar as alterações e continuar.\n' +
+        'Cancelar para continuar editando.'
+      )
+      if (!discard) return
+      setAlignmentNotesDirty(false)
+    }
+    setTab(next)
+  }
+
+  // Fechar a aba/atualizar a página/digitar outra URL não passa pelo React (não é uma
+  // troca de aba do evento nem uma navegação do Next.js): o navegador mostra seu próprio
+  // aviso nativo de "sair da página" enquanto houver edição não salva.
+  useEffect(() => {
+    if (!alignmentNotesDirty) return
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      e.preventDefault()
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [alignmentNotesDirty])
 
   const [y, m, d] = event.event_date.slice(0, 10).split('-').map(Number)
   const dateDisplay = format(new Date(y, m - 1, d), "EEE., dd 'de' MMM. 'de' yyyy", { locale: ptBR })
@@ -157,7 +186,7 @@ export function EventTabs({
         {TABS.map(t => (
           <button
             key={t.key}
-            onClick={() => setTab(t.key)}
+            onClick={() => handleTabChange(t.key)}
             className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
               tab === t.key
                 ? 'border-indigo-500 text-indigo-600'
@@ -194,7 +223,11 @@ export function EventTabs({
               initialTeamNotes={initialTeamNotes}
               sections={['checklist']}
             />
-            <EventAlignmentNotes eventId={eventoId} initialNotes={initialNotes} />
+            <EventAlignmentNotes
+              eventId={eventoId}
+              initialNotes={initialNotes}
+              onDirtyChange={setAlignmentNotesDirty}
+            />
           </div>
         )}
 
