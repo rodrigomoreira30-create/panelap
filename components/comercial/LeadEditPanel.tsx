@@ -3,7 +3,10 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
+// Subpath específico (não o barrel `date-fns/locale`, que reexporta ~200 locales e trava
+// a coleta de testes do Vitest neste projeto/ambiente) — mesmo export `ptBR`, sem mudança
+// de comportamento.
+import { ptBR } from 'date-fns/locale/pt-BR'
 import { Pencil, X, Check, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -142,9 +145,16 @@ export function LeadEditPanel({ lead, stages, sources, initialDocs, initialAttra
         assessor:        form.assessor || null,
         assessor_phone:  form.assessor_phone || null,
       }))
+      // `displayedBudget` é o valor exibido fora do modo de edição — também é atualizado
+      // por LeadAttractions (total das atrações), então precisa ser sincronizado aqui tanto
+      // quanto `displayed`; senão o Orçamento editado manualmente fica com o valor antigo
+      // na tela até um refresh completo da página, mesmo já persistido no banco.
+      setDisplayedBudget(form.budget ? parseFloat(form.budget) : null)
       setEditing(false)
       router.refresh()
     } else {
+      const body = await res.json().catch(() => null)
+      console.error('Falha ao salvar dados do lead:', res.status, body)
       setError('Erro ao salvar. Tente novamente.')
     }
   }
@@ -199,10 +209,10 @@ export function LeadEditPanel({ lead, stages, sources, initialDocs, initialAttra
                 </Button>
               ) : (
                 <div className="flex gap-1 shrink-0">
-                  <Button size="sm" onClick={handleSave} disabled={saving}>
+                  <Button size="sm" onClick={handleSave} disabled={saving} aria-label="Salvar">
                     {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
                   </Button>
-                  <Button size="sm" variant="outline" onClick={handleCancel} disabled={saving}>
+                  <Button size="sm" variant="outline" onClick={handleCancel} disabled={saving} aria-label="Cancelar">
                     <X size={13} />
                   </Button>
                 </div>
