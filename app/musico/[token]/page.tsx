@@ -8,6 +8,7 @@ import { Calendar, MapPin, Music, Download, Banknote } from 'lucide-react'
 import {
   formatCacheValue,
   getScheduleCutoffDate,
+  getVisibleEventNotes,
   groupScheduleByMonth,
 } from '@/lib/production/musician-schedule'
 
@@ -39,6 +40,7 @@ export default async function MusicianSchedulePage({
           id: true,
           status: true,
           cache_value: true,
+          instrument: true,
           event: {
             select: {
               client_name: true,
@@ -47,6 +49,10 @@ export default async function MusicianSchedulePage({
               event_time: true,
               venue_name: true,
               venue_address: true,
+              // Só chega à página para quem está em "Equipe de Som" (getVisibleEventNotes,
+              // abaixo) — para as demais funções, este valor nunca é interpolado no HTML
+              // enviado ao navegador, mesmo vindo preenchido desta consulta.
+              notes: true,
             },
           },
         },
@@ -103,6 +109,7 @@ export default async function MusicianSchedulePage({
                       { locale: ptBR }
                     )
                     const cacheDisplay = formatCacheValue(em.cache_value)
+                    const visibleNotes = getVisibleEventNotes(em.instrument, em.event.notes)
                     return (
                       <div key={em.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
                         <div className="flex items-start justify-between gap-2 mb-3">
@@ -132,6 +139,17 @@ export default async function MusicianSchedulePage({
                             </p>
                           )}
                         </div>
+                        {visibleNotes && (
+                          <div className="mt-3 pt-3 border-t border-gray-100">
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">
+                              Alinhamentos do Evento
+                            </p>
+                            <div
+                              className="prose prose-sm max-w-none text-gray-600"
+                              dangerouslySetInnerHTML={{ __html: visibleNotes }}
+                            />
+                          </div>
+                        )}
                         {em.status === 'pending' && (
                           <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
                             <a

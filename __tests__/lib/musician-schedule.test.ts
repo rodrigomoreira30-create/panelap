@@ -3,6 +3,8 @@ import {
   formatCacheValue,
   getScheduleCutoffDate,
   groupScheduleByMonth,
+  isSoundTeamInstrument,
+  getVisibleEventNotes,
 } from '@/lib/production/musician-schedule'
 
 function decimal(value: number) {
@@ -154,5 +156,73 @@ describe('groupScheduleByMonth — agrupamento por mês da agenda individual', (
 
   it('lista vazia gera nenhum grupo', () => {
     expect(groupScheduleByMonth([])).toEqual([])
+  })
+})
+
+// ── Alinhamentos do Evento na agenda individual: só para "Equipe de Som" ────────────────
+describe('isSoundTeamInstrument — a permissão é pela função NAQUELE evento, não pelo cadastro do músico', () => {
+  it('reconhece a grafia exata usada na Formação ("Equipe de Som")', () => {
+    expect(isSoundTeamInstrument('Equipe de Som')).toBe(true)
+  })
+
+  it('é tolerante a maiúsculas/minúsculas e espaços, como já é feito para o ícone do instrumento', () => {
+    expect(isSoundTeamInstrument('equipe de som')).toBe(true)
+    expect(isSoundTeamInstrument('EQUIPE DE SOM')).toBe(true)
+    expect(isSoundTeamInstrument('  Equipe de Som  ')).toBe(true)
+  })
+
+  it.each([
+    'Voz Masculina', 'Voz Feminina', 'Bateria', 'Baixo', 'Guitarra', 'Teclado', 'DJ', 'Time SB', 'Técnico', 'Cerimônia',
+  ])('TESTE 2: não reconhece outras funções da Formação (%s)', instrument => {
+    expect(isSoundTeamInstrument(instrument)).toBe(false)
+  })
+
+  it('não reconhece instrumento nulo/ausente (vaga aberta)', () => {
+    expect(isSoundTeamInstrument(null)).toBe(false)
+    expect(isSoundTeamInstrument(undefined)).toBe(false)
+  })
+
+  it('TESTE 4: o mesmo músico (Tyago) é Equipe de Som no Evento A e outra função no Evento B — a função decide, não a pessoa', () => {
+    const tyagoNoEventoA = 'Equipe de Som'
+    const tyagoNoEventoB = 'Técnico'
+    expect(isSoundTeamInstrument(tyagoNoEventoA)).toBe(true)
+    expect(isSoundTeamInstrument(tyagoNoEventoB)).toBe(false)
+  })
+})
+
+describe('getVisibleEventNotes — o que a agenda individual recebe para "Alinhamentos do Evento"', () => {
+  const ALINHAMENTO_REAL =
+    '<p>Tudo pronto as 15h00<br>Pode montar um dia antes<br>Local: Haras Lima em Limeira</p>'
+
+  it('TESTE 1: Equipe de Som com alinhamentos preenchidos → recebe o conteúdo', () => {
+    expect(getVisibleEventNotes('Equipe de Som', ALINHAMENTO_REAL)).toBe(ALINHAMENTO_REAL)
+  })
+
+  it.each(['Voz Masculina', 'Bateria', 'Guitarra', 'Baixo', 'Teclado', 'DJ', 'Time SB'])(
+    'TESTE 2: %s não recebe os alinhamentos, mesmo havendo conteúdo preenchido',
+    instrument => {
+      expect(getVisibleEventNotes(instrument, ALINHAMENTO_REAL)).toBeNull()
+    }
+  )
+
+  it('TESTE 3: Equipe de Som sem alinhamentos preenchidos → não mostra seção (retorna null, não string vazia)', () => {
+    expect(getVisibleEventNotes('Equipe de Som', null)).toBeNull()
+    expect(getVisibleEventNotes('Equipe de Som', '')).toBeNull()
+    expect(getVisibleEventNotes('Equipe de Som', '<p></p>')).toBeNull()
+  })
+
+  it('TESTE 4: o mesmo conteúdo só é liberado para a atribuição "Equipe de Som" — simula Tyago no Evento A e no Evento B', () => {
+    expect(getVisibleEventNotes('Equipe de Som', ALINHAMENTO_REAL)).toBe(ALINHAMENTO_REAL) // Evento A
+    expect(getVisibleEventNotes('Técnico', ALINHAMENTO_REAL)).toBeNull()                    // Evento B
+  })
+
+  it('TESTE 5: refletir uma atualização da Produção é automático — a função sempre lê o notes recebido, sem cache', () => {
+    const atualizado = '<p>Novo horário: chegar às 16h</p>'
+    expect(getVisibleEventNotes('Equipe de Som', atualizado)).toBe(atualizado)
+  })
+
+  it('preserva formatação rica (negrito e lista) sem alteração — quem renderiza decide a exibição, não esta função', () => {
+    const html = '<ul><li><strong>Som</strong>: ligar às 14h</li></ul>'
+    expect(getVisibleEventNotes('Equipe de Som', html)).toBe(html)
   })
 })

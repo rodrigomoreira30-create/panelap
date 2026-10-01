@@ -3,6 +3,7 @@ import { format } from 'date-fns'
 // a coleta de testes do Vitest neste projeto/ambiente) — mesmo export `ptBR`, sem mudança
 // de comportamento.
 import { ptBR } from 'date-fns/locale/pt-BR'
+import { normalizeNotesContent } from './alignment-notes'
 
 /** Formata o cachê de uma atribuição (`EventMusician.cache_value`) para exibição
  * na agenda individual do músico. Retorna `null` quando não há valor cadastrado
@@ -60,4 +61,31 @@ export function groupScheduleByMonth<T extends { event: { event_date: Date } }>(
     }
   }
   return groups
+}
+
+// "Equipe de Som" é o valor exato de EventMusician.instrument usado pela Formação
+// (ver components/producao/InstrumentPicker.tsx, categoria "Outros"). A comparação é
+// tolerante a maiúsculas/espaços, como já é feito em lib/production/instrument-icons.ts
+// para resolver o ícone do instrumento.
+const SOUND_TEAM_INSTRUMENT = 'equipe de som'
+
+/** `true` quando a atribuição ocupa a função "Equipe de Som" NAQUELE evento — é a única
+ *  função que vê os Alinhamentos do Evento na agenda individual. A regra é por evento,
+ *  não por cadastro do músico: a mesma pessoa pode estar em "Equipe de Som" num evento e
+ *  em outra função noutro, e esta função só enxerga o `instrument` da atribuição atual. */
+export function isSoundTeamInstrument(instrument: string | null | undefined): boolean {
+  return (instrument ?? '').trim().toLowerCase() === SOUND_TEAM_INSTRUMENT
+}
+
+/** Alinhamentos do Evento a expor na agenda individual: só para quem está em "Equipe de
+ *  Som" nesta atribuição, e só quando o conteúdo não está vazio (nunca mostra a seção em
+ *  branco). É a barreira que impede o conteúdo de vazar para outras funções — mesmo que a
+ *  consulta ao banco traga `event.notes` para todas as atribuições do evento, a página só
+ *  deve interpolar no HTML enviado ao navegador o valor que esta função devolver. */
+export function getVisibleEventNotes(
+  instrument: string | null | undefined,
+  notes: string | null | undefined
+): string | null {
+  if (!isSoundTeamInstrument(instrument)) return null
+  return normalizeNotesContent(notes ?? '') || null
 }
