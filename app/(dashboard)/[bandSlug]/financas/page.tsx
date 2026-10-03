@@ -38,7 +38,12 @@ export default async function FinancasPage({
     prisma.eventFinance.findMany({
       where: { band_id: dbUser.band_id, event_date: { gte: startDate, lte: endDate } },
       include: {
-        items:    { orderBy: { created_at: 'asc' } },
+        // event_musician (user_id + instrument): identidade estável para agrupar a matriz
+        // "Equipe / Cachês" por membro+função — ver lib/financas-team-matrix.ts.
+        items: {
+          orderBy: { created_at: 'asc' },
+          include: { event_musician: { select: { user_id: true, instrument: true } } },
+        },
         payments: { orderBy: { payment_date: 'asc' } },
       },
       orderBy: { event_date: 'asc' },

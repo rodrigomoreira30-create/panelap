@@ -3,6 +3,7 @@
 import { useRouter, useParams } from 'next/navigation'
 import { Trash2 } from 'lucide-react'
 import { fmt, DEFAULT_FINANCE_ITEMS, computeEventFinance, computeReceivedAmount, resolveItemAmount, type EventFinanceData } from '@/lib/financas'
+import { buildTeamMatrixRows, TEAM_CATEGORY_ORDER, TEAM_CATEGORY_LABELS } from '@/lib/financas-team-matrix'
 
 interface FinanceTableProps {
   finances: EventFinanceData[]
@@ -165,46 +166,74 @@ export function FinanceTable({ finances, onFinanceDeleted }: FinanceTableProps) 
             </tr>
           ))}
 
-          {/* Items customizados */}
-          {finances.flatMap(f => f.items.filter(i => !stdCategories.has(i.category)).map(item => ({ f, item }))).length > 0 && (
-            <>
-              <tr className="bg-gray-50 border-b">
-                <td colSpan={finances.length + 2} className="px-3 py-1 text-[10px] text-gray-400 uppercase sticky left-0 bg-gray-50">
-                  Custos personalizados
-                </td>
-              </tr>
-              {finances.flatMap(f =>
-                f.items
-                  .filter(i => !stdCategories.has(i.category))
-                  .map(item => (
-                    <tr key={item.id} className="border-b hover:bg-gray-50">
-                      <td className="px-3 py-2 sticky left-0 bg-white text-gray-600 z-10">
-                        {item.label}
+          {/* Equipe / Cachês — uma linha por membro+função (não mais por participação em
+              cada evento), com os valores distribuídos nas colunas dos eventos correspondentes. */}
+          {(() => {
+            const teamRows = buildTeamMatrixRows(finances)
+            if (teamRows.length === 0) return null
+            let lastCategory: typeof teamRows[number]['category'] | null = null
+            return (
+              <>
+                <tr className="bg-gray-50 border-b">
+                  <td colSpan={finances.length + 2} className="px-3 py-1 text-[10px] text-gray-400 uppercase sticky left-0 bg-gray-50">
+                    Custos personalizados
+                  </td>
+                </tr>
+                {teamRows.flatMap(row => {
+                  const trs: React.ReactNode[] = []
+                  if (row.category !== lastCategory) {
+                    lastCategory = row.category
+                    trs.push(
+                      <tr key={`cat-${row.category}`} className="border-b">
+                        <td colSpan={finances.length + 2} className="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide sticky left-0 bg-white">
+                          {TEAM_CATEGORY_LABELS[row.category]}
+                        </td>
+                      </tr>
+                    )
+                  }
+                  const total = Object.values(row.cellsByFinanceId).reduce((s, c) => s + c.amount, 0)
+                  trs.push(
+                    <tr key={row.key} className="border-b hover:bg-gray-50">
+                      <td className="px-3 py-2 pl-5 sticky left-0 bg-white text-gray-600 z-10">
+                        {row.label}
                       </td>
-                      {finances.map(fCol => {
-                        if (fCol.id !== f.id) return <td key={fCol.id} className="px-3 py-2" />
-                        const resolved = resolveItemAmount(item, f.expected_revenue)
+                      {finances.map(f => {
+                        const cell = row.cellsByFinanceId[f.id]
+                        if (!cell) {
+                          return (
+                            <td
+                              key={f.id}
+                              onClick={() => openEvent(f.event_id)}
+                              className="px-3 py-2 text-center text-gray-300 cursor-pointer hover:bg-gray-100"
+                              title="Abrir evento"
+                            >
+                              —
+                            </td>
+                          )
+                        }
                         return (
                           <td
-                            key={fCol.id}
+                            key={f.id}
                             onClick={() => openEvent(f.event_id)}
                             className={`px-3 py-2 text-right text-xs font-medium tabular-nums cursor-pointer hover:bg-gray-100 ${
-                              item.paid ? 'text-green-600' : 'text-red-600'
+                              cell.paid ? 'text-green-600' : 'text-red-600'
                             }`}
                             title="Abrir evento"
                           >
-                            {fmt(resolved)}
+                            {fmt(cell.amount)}
                           </td>
                         )
                       })}
                       <td className="px-3 py-2 text-right text-red-600 tabular-nums bg-gray-50">
-                        {fmt(resolveItemAmount(item, f.expected_revenue))}
+                        {fmt(total)}
                       </td>
                     </tr>
-                  ))
-              )}
-            </>
-          )}
+                  )
+                  return trs
+                })}
+              </>
+            )
+          })()}
 
           {/* Total Custos */}
           <tr className="bg-red-50/60 border-b">

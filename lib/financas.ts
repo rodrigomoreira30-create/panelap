@@ -11,6 +11,11 @@ export type FinanceItemData = {
   percent_of_revenue: number | null
   is_overridden: boolean
   event_musician_id: string | null
+  // Identidade estável (User.id) + função do músico na atribuição que gerou este custo —
+  // presente só quando a consulta inclui a relação `event_musician` (hoje, a listagem do
+  // Financeiro Geral). Usado para agrupar a matriz "Equipe / Cachês" por membro+função em
+  // vez de nome/instrumento soltos — ver lib/financas-team-matrix.ts.
+  event_musician?: { user_id: string; instrument: string | null } | null
 }
 
 export type EventPaymentData = {
@@ -85,6 +90,11 @@ export function serializeFinance(f: any): EventFinanceData {
         : null,
       is_overridden:      i.is_overridden ?? false,
       event_musician_id:  i.event_musician_id ?? null,
+      // Sem user_id (vaga aberta) não há identidade estável para agrupar — tratado como
+      // órfão pela matriz, igual a um item sem event_musician nenhum.
+      event_musician:     i.event_musician?.user_id
+        ? { user_id: i.event_musician.user_id, instrument: i.event_musician.instrument ?? null }
+        : null,
     })),
     payments: (f.payments ?? []).map((p: any) => ({
       id:             p.id,
