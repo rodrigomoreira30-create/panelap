@@ -6,6 +6,7 @@ import { ptBR } from 'date-fns/locale'
 import { Pencil, Check, X, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { EventCancellationControl, type EventCancellation } from './EventCancellationControl'
 
 const eventTypeLabels: Record<string, string> = {
   wedding: 'Casamento', party: 'Festa', show: 'Show',
@@ -41,6 +42,8 @@ interface Attraction {
 
 interface EventInfoPanelProps {
   event: EventInfo
+  cancellation: EventCancellation
+  onCancellationChange: (next: EventCancellation) => void
   attractions?: Attraction[]
   attractionsTotal?: number | null
   assessor?: string | null
@@ -48,7 +51,7 @@ interface EventInfoPanelProps {
   leadId?: string | null
 }
 
-export function EventInfoPanel({ event, attractions = [], attractionsTotal, assessor: initialAssessor, assessorPhone, leadId }: EventInfoPanelProps) {
+export function EventInfoPanel({ event, cancellation, onCancellationChange, attractions = [], attractionsTotal, assessor: initialAssessor, assessorPhone, leadId }: EventInfoPanelProps) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -125,6 +128,8 @@ export function EventInfoPanel({ event, attractions = [], attractionsTotal, asse
     }
   }
 
+  const cancelled = cancellation.cancelled_at != null
+
   const dateDisplay = (() => {
     const [y, m, d] = data.event_date.slice(0, 10).split('-').map(Number)
     return format(new Date(y, m - 1, d), "dd 'de' MMMM yyyy", { locale: ptBR })
@@ -170,9 +175,15 @@ export function EventInfoPanel({ event, attractions = [], attractionsTotal, asse
           )}
         </div>
         <div className="flex flex-col items-end gap-2">
-          <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${statusColors[data.status] ?? ''}`}>
-            {statusLabels[data.status] ?? data.status}
-          </span>
+          {cancelled ? (
+            <span className="text-xs px-2.5 py-0.5 rounded-full font-medium bg-red-100 text-red-700">
+              Cancelado
+            </span>
+          ) : (
+            <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${statusColors[data.status] ?? ''}`}>
+              {statusLabels[data.status] ?? data.status}
+            </span>
+          )}
           <span className="text-xs text-gray-500">
             {editing ? (
               <select
@@ -189,9 +200,16 @@ export function EventInfoPanel({ event, attractions = [], attractionsTotal, asse
             )}
           </span>
           {!editing ? (
-            <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
-              <Pencil size={13} className="mr-1" /> Editar
-            </Button>
+            <div className="flex flex-wrap justify-end gap-2">
+              <EventCancellationControl
+                eventId={event.id}
+                cancellation={cancellation}
+                onChange={onCancellationChange}
+              />
+              <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+                <Pencil size={13} className="mr-1" /> Editar
+              </Button>
+            </div>
           ) : (
             <div className="flex gap-1">
               <Button size="sm" onClick={handleSave} disabled={saving}>
@@ -204,6 +222,23 @@ export function EventInfoPanel({ event, attractions = [], attractionsTotal, asse
           )}
         </div>
       </div>
+
+      {cancelled && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <p className="font-medium">
+            Evento cancelado em{' '}
+            {format(new Date(cancellation.cancelled_at!), "dd 'de' MMMM yyyy", { locale: ptBR })}
+          </p>
+          {cancellation.cancellation_reason && (
+            <p className="mt-1 whitespace-pre-line">
+              <span className="font-medium">Motivo:</span> {cancellation.cancellation_reason}
+            </p>
+          )}
+          <p className="mt-1 text-xs text-red-700/80">
+            Todas as informações do evento (financeiro, contratos, anexos e equipe) continuam preservadas.
+          </p>
+        </div>
+      )}
 
       {/* Informações do local */}
       <div className="grid grid-cols-2 gap-4 text-sm bg-gray-50 rounded-lg p-4">

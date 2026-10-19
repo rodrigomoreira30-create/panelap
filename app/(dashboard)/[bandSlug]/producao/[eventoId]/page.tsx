@@ -80,6 +80,10 @@ export default async function EventDetailPage({
           value:           parseFloat(event.value.toString()),
           status:          event.status,
         }}
+        initialCancellation={{
+          cancelled_at:        event.cancelled_at?.toISOString() ?? null,
+          cancellation_reason: event.cancellation_reason ?? null,
+        }}
         musicianCount={event.event_musicians.length}
         attractions={attractions.map(a => ({ id: a.id, name: a.name }))}
         attractionsTotal={attractionsTotal}

@@ -15,3 +15,7 @@ export const eventUpdateSchema = z.object({
 }).refine(data => Object.keys(data).length > 0, { message: 'At least one field required' })
 
 export type EventUpdateInput = z.infer<typeof eventUpdateSchema>
+
+export const eventCancelSchema = z.object({
+  reason: z.string().max(1000).optional().nullable(),
+})

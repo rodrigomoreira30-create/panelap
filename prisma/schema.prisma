@@ -157,6 +157,10 @@ model Event {
   technical_visit_date DateTime?
   notes                String?
   team_notes           String?
+  // Cancelamento operacional: o evento continua existindo com todos os dados e o
+  // status original intacto (reativar = limpar estes campos).
+  cancelled_at         DateTime?
+  cancellation_reason  String?
   created_at           DateTime    @default(now())
   updated_at           DateTime    @updatedAt
 

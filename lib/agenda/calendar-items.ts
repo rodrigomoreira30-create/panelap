@@ -13,6 +13,8 @@ export type CalendarItemData = {
     leadStage: string
     /** Dia do calendário ('YYYY-MM-DD'), usado na comparação com "hoje". */
     dateKey: string
+    /** Evento cancelado (Event.cancelled_at preenchido) — card vermelho, prioridade máxima. */
+    cancelled: boolean
     eventType: string
     venue: string | null
     musicians: string[]
@@ -26,6 +28,7 @@ type EventRow = {
   event_date: Date
   venue_name: string
   status: string
+  cancelled_at?: Date | null
   lead: { status: string }
   event_musicians: { user: { name: string } | null }[]
 }
@@ -52,6 +55,7 @@ export function buildCalendarItems(events: EventRow[], leads: LeadRow[]): Calend
         status:    e.status,
         leadStage: e.lead.status,
         dateKey:   toDateKey(e.event_date),
+        cancelled: e.cancelled_at != null,
         eventType: e.event_type,
         venue:     e.venue_name,
         musicians: e.event_musicians
@@ -69,6 +73,7 @@ export function buildCalendarItems(events: EventRow[], leads: LeadRow[]): Calend
         status:    l.status,
         leadStage: l.status,
         dateKey:   toDateKey(l.event_date!),
+        cancelled: false,
         eventType: l.event_type,
         venue:     l.venue_name ?? null,
         musicians: [] as string[],

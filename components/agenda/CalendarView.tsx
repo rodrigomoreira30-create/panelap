@@ -6,7 +6,12 @@ import { Calendar, dateFnsLocalizer, type View } from 'react-big-calendar'
 import { format, parse, startOfWeek, getDay } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
-import { CALENDAR_COLORS, getCalendarEventColor, toLocalDate } from '@/lib/agenda/calendar-status'
+import {
+  CALENDAR_COLORS,
+  getCalendarEventColor,
+  getCalendarEventLabel,
+  toLocalDate,
+} from '@/lib/agenda/calendar-status'
 import type { CalendarItemData } from '@/lib/agenda/calendar-items'
 
 const locales = { 'pt-BR': ptBR }
@@ -71,6 +76,7 @@ export function CalendarView({ initialEvents, bandSlug }: CalendarViewProps) {
     const color = getCalendarEventColor({
       date: item.resource.dateKey,
       leadStage: item.resource.leadStage,
+      cancelled: item.resource.cancelled,
     })
 
     return {
@@ -112,11 +118,16 @@ export function CalendarView({ initialEvents, bandSlug }: CalendarViewProps) {
             router.push(`/${bandSlug}/producao/${item.id}`)
           }
         }}
+        tooltipAccessor={(item: CalendarItem) =>
+          getCalendarEventLabel({ title: item.title, cancelled: item.resource.cancelled })
+        }
         components={{
           event: ({ event }: { event: object }) => {
             const item = event as CalendarItem
             return (
-              <span className="block truncate cursor-pointer">{item.title}</span>
+              <span className="block truncate cursor-pointer">
+                {getCalendarEventLabel({ title: item.title, cancelled: item.resource.cancelled })}
+              </span>
             )
           },
         }}

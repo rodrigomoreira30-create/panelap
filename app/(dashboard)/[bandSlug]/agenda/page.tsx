@@ -84,6 +84,10 @@ export default async function AgendaPage({
             <span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: CALENDAR_COLORS.gray }} />
             Evento realizado/passado
           </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: CALENDAR_COLORS.red }} />
+            Evento cancelado
+          </span>
         </div>
       </div>
 

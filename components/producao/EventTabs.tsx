@@ -10,6 +10,7 @@ import { EventDetailClient } from './EventDetailClient'
 import { EventDocuments } from './EventDocuments'
 import { EventAlignmentNotes } from './EventAlignmentNotes'
 import { EventFinanceTab } from './EventFinanceTab'
+import type { EventCancellation } from './EventCancellationControl'
 import { shouldConfirmTabChange } from '@/lib/production/alignment-notes'
 
 const eventTypeLabels: Record<string, string> = {
@@ -67,6 +68,7 @@ interface Doc {
 interface EventTabsProps {
   // Header + EventInfoPanel
   event: EventInfo
+  initialCancellation: EventCancellation
   musicianCount: number
 
   // Geral — atrações
@@ -100,6 +102,7 @@ function PlaceholderTab({ label }: { label: string }) {
 
 export function EventTabs({
   event,
+  initialCancellation,
   musicianCount,
   attractions,
   attractionsTotal,
@@ -115,6 +118,8 @@ export function EventTabs({
   initialNotes,
 }: EventTabsProps) {
   const [tab, setTab] = useState<Tab>('geral')
+  const [cancellation, setCancellation] = useState<EventCancellation>(initialCancellation)
+  const cancelled = cancellation.cancelled_at != null
   // "Alinhamentos do Evento" (aba Geral) agora salva só ao clicar em Salvar — se o usuário
   // tentar trocar de aba com edição pendente, confirmamos antes de descartá-la.
   const [alignmentNotesDirty, setAlignmentNotesDirty] = useState(false)
@@ -156,9 +161,15 @@ export function EventTabs({
             <h1 className="text-2xl font-bold text-gray-900">{event.client_name}</h1>
             <p className="text-sm text-gray-500 mt-0.5">{eventTypeLabels[event.event_type] ?? event.event_type}</p>
           </div>
-          <span className={`mt-1 shrink-0 text-xs px-2.5 py-1 rounded-full font-medium ${statusColors[event.status] ?? 'bg-gray-100 text-gray-600'}`}>
-            {statusLabels[event.status] ?? event.status}
-          </span>
+          {cancelled ? (
+            <span className="mt-1 shrink-0 text-xs px-2.5 py-1 rounded-full font-medium bg-red-100 text-red-700">
+              Cancelado
+            </span>
+          ) : (
+            <span className={`mt-1 shrink-0 text-xs px-2.5 py-1 rounded-full font-medium ${statusColors[event.status] ?? 'bg-gray-100 text-gray-600'}`}>
+              {statusLabels[event.status] ?? event.status}
+            </span>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-x-5 gap-y-1 mt-3 text-sm text-gray-500">
@@ -204,6 +215,8 @@ export function EventTabs({
           <div className="space-y-8">
             <EventInfoPanel
               event={event}
+              cancellation={cancellation}
+              onCancellationChange={setCancellation}
               attractions={attractions}
               attractionsTotal={attractionsTotal}
               assessor={assessor}

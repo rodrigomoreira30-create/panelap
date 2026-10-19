@@ -3,6 +3,7 @@ import {
   CALENDAR_COLORS,
   CLOSED_LEAD_STAGE,
   getCalendarEventColor,
+  getCalendarEventLabel,
   toDateKey,
   toLocalDate,
 } from '@/lib/agenda/calendar-status'
@@ -84,7 +85,43 @@ describe('getCalendarEventColor — regra de prioridade', () => {
   })
 
   it('expõe as cores hex usadas nos cards e na legenda', () => {
-    expect(CALENDAR_COLORS).toEqual({ blue: '#3b82f6', orange: '#f59e0b', gray: '#9ca3af' })
+    expect(CALENDAR_COLORS).toEqual({ blue: '#3b82f6', orange: '#f59e0b', gray: '#9ca3af', red: '#dc2626' })
+  })
+})
+
+describe('getCalendarEventColor — evento cancelado', () => {
+  it('cancelado + futuro + fechado → vermelho (sobrepõe o azul)', () => {
+    expect(
+      getCalendarEventColor({ date: d('2026-10-10'), leadStage: CLOSED_LEAD_STAGE, cancelled: true, today: HOJE })
+    ).toBe('red')
+  })
+
+  it('cancelado + data passada → vermelho, nunca cinza', () => {
+    expect(
+      getCalendarEventColor({ date: d('2026-09-05'), leadStage: CLOSED_LEAD_STAGE, cancelled: true, today: HOJE })
+    ).toBe('red')
+  })
+
+  it('cancelado + hoje → vermelho', () => {
+    expect(
+      getCalendarEventColor({ date: d('2026-09-26'), leadStage: CLOSED_LEAD_STAGE, cancelled: true, today: HOJE })
+    ).toBe('red')
+  })
+
+  it('não cancelado mantém as regras atuais (cinza/azul/laranja)', () => {
+    expect(getCalendarEventColor({ date: d('2026-09-05'), leadStage: CLOSED_LEAD_STAGE, cancelled: false, today: HOJE })).toBe('gray')
+    expect(getCalendarEventColor({ date: d('2026-10-10'), leadStage: CLOSED_LEAD_STAGE, cancelled: false, today: HOJE })).toBe('blue')
+    expect(getCalendarEventColor({ date: d('2026-12-11'), leadStage: 'negotiation', cancelled: false, today: HOJE })).toBe('orange')
+  })
+})
+
+describe('getCalendarEventLabel', () => {
+  it('cancelado → "CANCELADO — Nome"', () => {
+    expect(getCalendarEventLabel({ title: 'Daniela & Paulo', cancelled: true })).toBe('CANCELADO — Daniela & Paulo')
+  })
+
+  it('não cancelado → só o nome', () => {
+    expect(getCalendarEventLabel({ title: 'Daniela & Paulo', cancelled: false })).toBe('Daniela & Paulo')
   })
 })
 

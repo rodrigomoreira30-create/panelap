@@ -31,6 +31,7 @@ type EventWithProgress = {
   event_type: string
   venue_name: string
   status: EventStatus
+  cancelled_at?: Date | string | null
   checklists: ChecklistProgress[]
   event_musicians: MusicianProgress[]
 }
@@ -212,9 +213,15 @@ export function EventList({ events: initialEvents, bandSlug }: Props) {
                 </a>
 
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${statusColors[event.status]}`}>
-                    {statusLabels[event.status]}
-                  </span>
+                  {event.cancelled_at ? (
+                    <span className="text-xs px-2.5 py-0.5 rounded-full font-medium bg-red-100 text-red-700">
+                      Cancelado
+                    </span>
+                  ) : (
+                    <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${statusColors[event.status]}`}>
+                      {statusLabels[event.status]}
+                    </span>
+                  )}
                   <button
                     onClick={(e) => handleEquipeOk(e, event.id)}
                     disabled={loadingId === event.id}

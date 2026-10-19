@@ -40,6 +40,21 @@ describe('buildCalendarItems', () => {
     expect(item.resource.dateKey).toBe('2026-12-11')
   })
 
+  it('evento sem cancelled_at → cancelled false; com cancelled_at → cancelled true e título original preservado', () => {
+    const [ativo] = buildCalendarItems([eventRow({ cancelled_at: null })] as any, [])
+    expect(ativo.resource.cancelled).toBe(false)
+
+    const [cancelado] = buildCalendarItems([eventRow({ cancelled_at: new Date('2026-09-20T15:00:00.000Z') })] as any, [])
+    expect(cancelado.resource.cancelled).toBe(true)
+    expect(cancelado.title).toBe('Helena e João Pedro')
+    expect(cancelado.resource.status).toBe('done')
+  })
+
+  it('lead nunca é cancelado', () => {
+    const [item] = buildCalendarItems([], [leadRow()] as any)
+    expect(item.resource.cancelled).toBe(false)
+  })
+
   it('mantém eventos antes dos leads', () => {
     const items = buildCalendarItems([eventRow()] as any, [leadRow()] as any)
     expect(items.map(i => i.resource.kind)).toEqual(['event', 'lead'])

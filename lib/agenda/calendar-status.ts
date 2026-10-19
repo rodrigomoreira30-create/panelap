@@ -1,15 +1,16 @@
 // Regra única de cor dos cards da Agenda.
 //
 // Prioridade:
-//   1. data anterior a hoje            → cinza  (sobrepõe qualquer status)
-//   2. hoje/futuro + lead fechado      → azul   (evento contratado)
-//   3. hoje/futuro + qualquer outro    → laranja (orçamento em aberto)
+//   1. evento cancelado                → vermelho (sobrepõe tudo, inclusive data passada)
+//   2. data anterior a hoje            → cinza  (sobrepõe qualquer status)
+//   3. hoje/futuro + lead fechado      → azul   (evento contratado)
+//   4. hoje/futuro + qualquer outro    → laranja (orçamento em aberto)
 //
 // "Fechado" é a etapa do LEAD no pipeline (Lead.status === 'closed'), não a existência de
 // um Event nem o Event.status: o botão "Equipe OK" da Produção grava Event.status = 'done'
 // para arquivar o evento, então esse campo não diz se o evento já aconteceu.
 
-export type CalendarColor = 'gray' | 'blue' | 'orange'
+export type CalendarColor = 'gray' | 'blue' | 'orange' | 'red'
 
 // Chave da etapa "Fechado" — a mesma que dispara a criação do Event (lead.closed).
 export const CLOSED_LEAD_STAGE = 'closed'
@@ -18,6 +19,7 @@ export const CALENDAR_COLORS: Record<CalendarColor, string> = {
   blue:   '#3b82f6',
   orange: '#f59e0b',
   gray:   '#9ca3af',
+  red:    '#dc2626',
 }
 
 /**
@@ -46,14 +48,22 @@ export function toLocalDate(v: Date | string): Date {
 export function getCalendarEventColor({
   date,
   leadStage,
+  cancelled = false,
   today = new Date(),
 }: {
   date: Date | string
   leadStage?: string | null
+  cancelled?: boolean
   today?: Date
 }): CalendarColor {
+  if (cancelled) return 'red'
   // Datas 'YYYY-MM-DD' comparam corretamente como string. Hoje não é passado.
   if (toDateKey(date) < localDateKey(today)) return 'gray'
   if (leadStage === CLOSED_LEAD_STAGE) return 'blue'
   return 'orange'
+}
+
+/** Texto do card: cancelado ganha o prefixo "CANCELADO — " (o título original segue no item). */
+export function getCalendarEventLabel({ title, cancelled }: { title: string; cancelled: boolean }): string {
+  return cancelled ? `CANCELADO — ${title}` : title
 }
