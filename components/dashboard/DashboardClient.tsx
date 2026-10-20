@@ -17,7 +17,6 @@ export type DashboardKpi = {
   leadsAbertos: number
   faturamentoPrevisto: number
   leadsNovos: number
-  aReceber30dias: number
 }
 
 export type DashboardFinance =
@@ -29,6 +28,7 @@ export type DashboardFinance =
       custos: number
       lucroPrevisto: number
       margemPrevista: number | null
+      percentualRecebido: number | null
       eventos: number
       cancelados: { count: number; faturamentoPrevisto: number }
     }
@@ -73,9 +73,9 @@ async function fetchDashboard(bandSlug: string, sel: PeriodSelection): Promise<D
 }
 
 const PRESET_LABEL: Record<PeriodSelection['preset'], string> = {
-  '7d': 'Últimos 7 dias',
-  '30d': 'Últimos 30 dias',
-  '90d': 'Últimos 90 dias',
+  '7d': 'Últimos 7 dias (até hoje)',
+  '30d': 'Últimos 30 dias (até hoje)',
+  '90d': 'Últimos 90 dias (até hoje)',
   month: 'Este mês',
   year: 'Este ano',
   custom: 'Personalizado',
@@ -157,7 +157,8 @@ export function DashboardClient({ bandSlug }: { bandSlug: string }) {
         <h2 className="text-sm font-medium text-gray-700">
           Indicadores financeiros
           <span className="ml-2 text-xs font-normal text-gray-400">
-            {data.period.criterion === 'evento' ? 'por data do evento' : 'por data do recebimento'}
+            {data.period.criterion === 'evento' ? 'eventos com data' : 'recebimentos com data'} de{' '}
+            {formatPeriodLabel(data.period.from, data.period.to)}
           </span>
         </h2>
         <FinanceCards finance={data.finance} />

@@ -34,7 +34,7 @@ async function periodFinanceCalls() {
 function financeRow(overrides: Record<string, unknown> = {}) {
   return {
     id: 'f1', event_id: 'e1', name: 'Show', client: null, product: null,
-    event_date: new Date(2026, 2, 10), expected_revenue: 10000, received_amount: 0, notes: null,
+    event_date: new Date('2026-03-10T00:00:00Z'), expected_revenue: 10000, received_amount: 0, notes: null,
     items: [], payments: [], event: { cancelled_at: null },
     ...overrides,
   }
@@ -49,9 +49,9 @@ describe('GET /api/dashboard', () => {
     } as any)
     vi.mocked(prisma.lead.count).mockResolvedValue(4)
     vi.mocked(prisma.lead.findMany).mockResolvedValue([
-      { created_at: new Date(2026, 0, 5), status: 'new_lead' },
-      { created_at: new Date(2026, 0, 20), status: 'closed' },
-      { created_at: new Date(2026, 4, 2), status: 'new_lead' },
+      { created_at: new Date('2026-01-05T15:00:00Z'), status: 'new_lead' },
+      { created_at: new Date('2026-01-20T15:00:00Z'), status: 'closed' },
+      { created_at: new Date('2026-05-02T15:00:00Z'), status: 'new_lead' },
     ] as any)
     vi.mocked(prisma.event.findMany).mockResolvedValue([])
     vi.mocked(prisma.eventFinance.findMany).mockResolvedValue([])
@@ -73,8 +73,9 @@ describe('GET /api/dashboard', () => {
     expect(calls).toHaveLength(1)
     const where = calls[0][0]!.where as any
     expect(where.band_id).toBe('band-1')
-    expect(where.event_date.gte).toEqual(new Date(2025, 0, 1))
-    expect(where.event_date.lte).toEqual(new Date(2025, 11, 31, 23, 59, 59, 999))
+    // primeiro e último dia inteiros, na convenção de data civil de event_date
+    expect(where.event_date.gte.toISOString()).toBe('2025-01-01T00:00:00.000Z')
+    expect(where.event_date.lte.toISOString()).toBe('2025-12-31T23:59:59.999Z')
     const json = await res.json()
     expect(json.data.period).toMatchObject({ from: '2025-01-01', to: '2025-12-31', granularity: 'month', criterion: 'evento' })
   })
@@ -84,7 +85,9 @@ describe('GET /api/dashboard', () => {
     const res = await GET(req('from=2026-01-01&to=2026-12-31'))
     const json = await res.json()
     const where = vi.mocked(prisma.lead.findMany).mock.calls[0][0]!.where as any
-    expect(where.created_at.gte).toEqual(new Date(2026, 0, 1))
+    // created_at é instante real: limites no fuso de Brasília
+    expect(where.created_at.gte.toISOString()).toBe('2026-01-01T03:00:00.000Z')
+    expect(where.created_at.lte.toISOString()).toBe('2027-01-01T02:59:59.999Z')
     expect(json.data.kpi.leadsNovos).toBe(3)
     expect(json.data.kpi.leadsAbertos).toBe(4) // indicador atual, não depende do período
     expect(json.data.leadsByPeriod).toHaveLength(12)
@@ -100,7 +103,7 @@ describe('GET /api/dashboard', () => {
       financeRow({
         id: 'a', expected_revenue: 20000,
         items: [{ id: 'i1', finance_id: 'a', category: 'cache_musico', label: 'Baixo', amount: 1500, paid: false, notes: null, percent_of_revenue: null, is_overridden: false, event_musician_id: 'em1' }],
-        payments: [{ id: 'p1', finance_id: 'a', payment_date: new Date(2026, 1, 1), amount: 5000, payment_method: 'pix', notes: null }],
+        payments: [{ id: 'p1', finance_id: 'a', payment_date: new Date('2026-02-01T00:00:00Z'), amount: 5000, payment_method: 'pix', notes: null }],
       }),
       financeRow({ id: 'b', expected_revenue: 3000, event: { cancelled_at: new Date() } }),
     ] as any)
@@ -118,6 +121,8 @@ describe('GET /api/dashboard', () => {
       cancelados: { count: 1, faturamentoPrevisto: 3000 },
     })
     expect(json.data.finance.margemPrevista).toBeCloseTo(93.48, 2)
+    expect(json.data.finance.percentualRecebido).toBeCloseTo(21.74, 2)
+    expect(json.data.kpi).not.toHaveProperty('aReceber30dias')
     expect(json.data.financeEvolution[2]).toMatchObject({ label: 'mar/26', faturamento: 23000, custos: 1500, lucro: 21500 })
     expect(prisma.eventPayment.findMany).not.toHaveBeenCalled()
   })
@@ -125,8 +130,8 @@ describe('GET /api/dashboard', () => {
   it('critério data do recebimento: usa apenas pagamentos com data real e informa valores legados sem data', async () => {
     const { prisma } = await import('@/lib/prisma')
     vi.mocked(prisma.eventPayment.findMany).mockResolvedValue([
-      { finance_id: 'a', payment_date: new Date(2026, 0, 15), amount: 1000 },
-      { finance_id: 'b', payment_date: new Date(2026, 6, 1), amount: 2500 },
+      { finance_id: 'a', payment_date: new Date('2026-01-15T00:00:00Z'), amount: 1000 },
+      { finance_id: 'b', payment_date: new Date('2026-07-01T00:00:00Z'), amount: 2500 },
     ] as any)
     vi.mocked(prisma.eventFinance.aggregate).mockResolvedValue({
       _count: { _all: 2 }, _sum: { received_amount: 4200 },
@@ -135,7 +140,7 @@ describe('GET /api/dashboard', () => {
     const res = await GET(req('from=2026-01-01&to=2026-12-31&criterio=recebimento'))
     const json = await res.json()
     const where = vi.mocked(prisma.eventPayment.findMany).mock.calls[0][0]!.where as any
-    expect(where.payment_date.gte).toEqual(new Date(2026, 0, 1))
+    expect(where.payment_date.gte.toISOString()).toBe('2026-01-01T00:00:00.000Z')
     expect(where.finance.band_id).toBe('band-1')
     expect(json.data.finance).toEqual({
       criterion: 'recebimento',
@@ -160,5 +165,41 @@ describe('GET /api/dashboard', () => {
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.data.leadsByPeriod).toHaveLength(7)
+  })
+
+  it('01/10 a 30/11: inclui eventos do primeiro e do último dia e soma outubro + novembro', async () => {
+    const { prisma } = await import('@/lib/prisma')
+    const rows = [
+      financeRow({ id: 'o1', event_date: new Date('2026-10-01T00:00:00Z'), expected_revenue: 60000, received_amount: 40000,
+        items: [{ id: 'i1', finance_id: 'o1', category: 'cache_musico', label: 'Baixo', amount: 30000, paid: false, notes: null, percent_of_revenue: null, is_overridden: false, event_musician_id: null }] }),
+      financeRow({ id: 'o2', event_date: new Date('2026-10-31T00:00:00Z'), expected_revenue: 50915, received_amount: 29495,
+        items: [{ id: 'i2', finance_id: 'o2', category: 'equipe_som', label: 'Som', amount: 42900, paid: false, notes: null, percent_of_revenue: null, is_overridden: false, event_musician_id: null }] }),
+      financeRow({ id: 'n1', event_date: new Date('2026-11-30T00:00:00Z'), expected_revenue: 89050, received_amount: 21715,
+        items: [{ id: 'i3', finance_id: 'n1', category: 'outros', label: 'Outros', amount: 64400, paid: false, notes: null, percent_of_revenue: null, is_overridden: false, event_musician_id: null }] }),
+    ]
+    vi.mocked(prisma.eventFinance.findMany).mockImplementation((async (args: any) => {
+      const { gte, lte } = args.where.event_date
+      return rows.filter(r => r.event_date >= gte && r.event_date <= lte)
+    }) as any)
+
+    const json = await (await GET(req('from=2026-10-01&to=2026-11-30'))).json()
+    expect(json.data.finance).toMatchObject({
+      faturamentoPrevisto: 199965,
+      recebido: 91210,
+      aReceber: 108755,
+      custos: 137300,
+      lucroPrevisto: 62665,
+      eventos: 3,
+    })
+
+    // Período parcial: só outubro
+    const oct = await (await GET(req('from=2026-10-01&to=2026-10-31'))).json()
+    expect(oct.data.finance).toMatchObject({ faturamentoPrevisto: 110915, recebido: 69495, aReceber: 41420, custos: 72900, lucroPrevisto: 38015 })
+    // Troca de filtro: só novembro
+    const nov = await (await GET(req('from=2026-11-01&to=2026-11-30'))).json()
+    expect(nov.data.finance).toMatchObject({ faturamentoPrevisto: 89050, recebido: 21715, aReceber: 67335, custos: 64400, lucroPrevisto: 24650 })
+    // Dia seguinte ao último evento: vazio
+    const empty = await (await GET(req('from=2026-12-01&to=2026-12-07'))).json()
+    expect(empty.data.finance).toMatchObject({ faturamentoPrevisto: 0, eventos: 0, percentualRecebido: null })
   })
 })

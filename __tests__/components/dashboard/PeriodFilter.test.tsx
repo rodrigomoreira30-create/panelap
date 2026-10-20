@@ -8,15 +8,15 @@ const base: PeriodSelection = selectionForPreset('30d', 'evento')
 describe('PeriodFilter', () => {
   it('mantém 7/30/90 dias e adiciona Este mês, Este ano e Personalizado', () => {
     render(<PeriodFilter value={base} onChange={() => {}} />)
-    for (const label of ['7 dias', '30 dias', '90 dias', 'Este mês', 'Este ano', 'Personalizado']) {
+    for (const label of ['Últimos 7 dias', 'Últimos 30 dias', 'Últimos 90 dias', 'Este mês', 'Este ano', 'Personalizado']) {
       expect(screen.getByRole('button', { name: label })).toBeInTheDocument()
     }
   })
 
   it.each([
-    ['7 dias', '7d'],
-    ['30 dias', '30d'],
-    ['90 dias', '90d'],
+    ['Últimos 7 dias', '7d'],
+    ['Últimos 30 dias', '30d'],
+    ['Últimos 90 dias', '90d'],
     ['Este mês', 'month'],
     ['Este ano', 'year'],
   ] as const)('preset %s resolve o intervalo correspondente', (label, preset) => {

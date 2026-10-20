@@ -19,9 +19,9 @@ export type PeriodSelection = {
 }
 
 const PRESETS: { value: Exclude<PeriodPreset, 'custom'>; label: string }[] = [
-  { value: '7d',    label: '7 dias' },
-  { value: '30d',   label: '30 dias' },
-  { value: '90d',   label: '90 dias' },
+  { value: '7d',    label: 'Últimos 7 dias' },
+  { value: '30d',   label: 'Últimos 30 dias' },
+  { value: '90d',   label: 'Últimos 90 dias' },
   { value: 'month', label: 'Este mês' },
   { value: 'year',  label: 'Este ano' },
 ]

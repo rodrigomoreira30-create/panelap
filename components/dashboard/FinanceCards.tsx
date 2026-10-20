@@ -75,21 +75,21 @@ export function FinanceCards({ finance }: { finance: DashboardFinance }) {
       <CardGrid
         cards={[
           {
-            label: 'Faturamento Previsto',
+            label: 'Receita prevista',
             value: brl(finance.faturamentoPrevisto),
-            hint: 'Receita prevista dos eventos do período',
+            hint: 'Soma das receitas previstas dos eventos do período',
             color: 'text-blue-700',
           },
           {
             label: 'Recebido',
             value: brl(finance.recebido),
-            hint: 'Já recebido desses eventos, em qualquer data',
+            hint: 'Já recebido desses eventos, inclusive antes do período',
             color: 'text-green-700',
           },
           {
-            label: 'A Receber',
+            label: 'A receber',
             value: brl(finance.aReceber),
-            hint: 'Saldo pendente desses eventos',
+            hint: 'Saldo pendente desses mesmos eventos',
             color: 'text-orange-600',
           },
           {
@@ -99,26 +99,28 @@ export function FinanceCards({ finance }: { finance: DashboardFinance }) {
             color: 'text-red-600',
           },
           {
-            label: 'Lucro Previsto',
+            label: 'Lucro previsto',
             value: brl(finance.lucroPrevisto),
-            hint: 'Faturamento previsto − custos',
+            hint: finance.margemPrevista === null
+              ? 'Receita prevista − custos'
+              : `Receita prevista − custos · margem ${pct(finance.margemPrevista)}`,
             color: profitColor,
           },
           {
-            label: 'Margem Prevista',
-            value: finance.margemPrevista === null ? '—' : pct(finance.margemPrevista),
-            hint: finance.margemPrevista === null ? 'Sem faturamento no período' : 'Lucro ÷ faturamento × 100',
-            color: profitColor,
+            label: 'Percentual recebido',
+            value: finance.percentualRecebido === null ? '—' : pct(finance.percentualRecebido),
+            hint: finance.percentualRecebido === null ? 'Sem receita prevista no período' : 'Recebido ÷ receita prevista',
+            color: 'text-gray-900',
           },
         ]}
       />
       <p className="flex items-start gap-1.5 text-xs text-gray-500">
         <Info size={13} className="mt-0.5 shrink-0" />
-        {finance.eventos} evento(s) no período, pela data do evento — mesmos valores do Financeiro Geral.
+        {finance.eventos} evento(s) com data no período — mesma fonte e mesmo cálculo da aba Finanças.
         {finance.cancelados.count > 0 && (
           <>
             {' '}Inclui {finance.cancelados.count} evento(s) cancelado(s) ({brl(finance.cancelados.faturamentoPrevisto)}{' '}
-            de faturamento previsto), como no Financeiro Geral.
+            de receita prevista), como na aba Finanças.
           </>
         )}
       </p>

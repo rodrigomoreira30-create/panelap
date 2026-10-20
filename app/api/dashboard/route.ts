@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/prisma'
 import { EventStatus } from '@/lib/generated/prisma/enums'
-import { computeReceivedAmount, serializeFinance } from '@/lib/financas'
+import { serializeFinance } from '@/lib/financas'
 import { reconcileTeamCosts } from '@/lib/finance-service'
 import {
   buildBuckets,
@@ -11,9 +11,9 @@ import {
   countByBucket,
   parsePeriodRange,
   pickGranularity,
+  resolvePresetRange,
   summarizeEventFinances,
   summarizePayments,
-  toISODate,
   type AnalysisCriterion,
 } from '@/lib/dashboard-period'
 
@@ -35,12 +35,8 @@ function resolveRequestedPeriod(searchParams: URLSearchParams): { from: string; 
   const from = searchParams.get('from')
   const to = searchParams.get('to')
   if (from && to) return { from, to }
-  const days = Math.min(Math.max(parseInt(searchParams.get('days') ?? '30', 10) || 30, 1), 365)
-  const today = new Date()
-  return {
-    from: toISODate(new Date(today.getFullYear(), today.getMonth(), today.getDate() - (days - 1))),
-    to: toISODate(today),
-  }
+  const days = searchParams.get('days')
+  return resolvePresetRange(days === '7' ? '7d' : days === '90' ? '90d' : '30d', new Date())
 }
 
 export async function GET(request: Request) {
@@ -55,7 +51,8 @@ export async function GET(request: Request) {
   const { from, to } = resolveRequestedPeriod(searchParams)
   const range = parsePeriodRange(from, to)
   if ('error' in range) return NextResponse.json({ error: range.error }, { status: 400 })
-  const { start, end } = range
+  // start/end: datas civis (event_date, payment_date); instantStart/instantEnd: created_at
+  const { start, end, instantStart, instantEnd } = range
   const criterion: AnalysisCriterion =
     searchParams.get('criterio') === 'recebimento' ? 'recebimento' : 'evento'
   const granularity = pickGranularity(start, end)
@@ -83,7 +80,7 @@ export async function GET(request: Request) {
 
   // Leads criados no período — base de "leads novos", "leads por período" e "leads por etapa"
   const leadsInPeriod = await prisma.lead.findMany({
-    where: { band_id: bandId, created_at: { gte: start, lte: end } },
+    where: { band_id: bandId, created_at: { gte: instantStart, lte: instantEnd } },
     select: { created_at: true, status: true },
   })
   const leadsNovos = leadsInPeriod.length
@@ -97,8 +94,10 @@ export async function GET(request: Request) {
     count: countByStage.get(s.key) ?? 0,
   }))
 
-  // KPI atual (não depende do período): carteira — soma do total das atrações dos
-  // eventos contratados/em andamento
+  // KPI comercial (não depende do período): "Faturamento Previsto Atrações" — valor das
+  // atrações da proposta do lead (menos desconto) de TODOS os eventos contratados/em
+  // andamento, sem filtro de data. É a carteira comercial contratada; não é a receita
+  // prevista do Financeiro (EventFinance.expected_revenue), que segue o período.
   const activeEvents = await prisma.event.findMany({
     where: { band_id: bandId, status: { in: [EventStatus.contracted, EventStatus.active] } },
     include: {
@@ -118,18 +117,6 @@ export async function GET(request: Request) {
     )
     const discount = parseFloat((e.lead.proposal_discount ?? 0).toString())
     return sum + Math.max(0, subtotal - discount)
-  }, 0)
-
-  // KPI atual (não depende do período): a receber nos próximos 30 dias
-  const hoje = new Date(); hoje.setHours(0, 0, 0, 0)
-  const em30dias = new Date(hoje); em30dias.setDate(hoje.getDate() + 30); em30dias.setHours(23, 59, 59)
-  const financesNext30 = await prisma.eventFinance.findMany({
-    where: { band_id: bandId, event_date: { gte: hoje, lte: em30dias } },
-    select: { expected_revenue: true, received_amount: true, payments: { select: { amount: true } } },
-  })
-  const aReceber30dias = financesNext30.reduce((s, f) => {
-    const saldo = parseFloat(f.expected_revenue.toString()) - computeReceivedAmount(f)
-    return s + Math.max(0, saldo)
   }, 0)
 
   // Indicadores financeiros do período — um critério por vez, nunca misturados.
@@ -200,7 +187,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     data: {
       period: { from, to, granularity, criterion },
-      kpi: { leadsAbertos, faturamentoPrevisto, leadsNovos, aReceber30dias },
+      kpi: { leadsAbertos, faturamentoPrevisto, leadsNovos },
       finance,
       financeEvolution,
       leadsByPeriod,
