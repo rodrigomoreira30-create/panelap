@@ -2,22 +2,49 @@
 'use client'
 
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { KpiCards } from './KpiCards'
 import { LeadsByDayChart } from './LeadsByDayChart'
 import { LeadsByStageChart } from './LeadsByStageChart'
 import { UpcomingEvents } from './UpcomingEvents'
+import { FinanceCards } from './FinanceCards'
+import { FinanceEvolutionChart } from './FinanceEvolutionChart'
+import { DEFAULT_PRESET, PeriodFilter, selectionForPreset, type PeriodSelection } from './PeriodFilter'
+import { formatPeriodLabel, type AnalysisCriterion, type Granularity } from '@/lib/dashboard-period'
 
+/** Indicadores que não dependem do período selecionado (exceto leadsNovos). */
 export type DashboardKpi = {
   leadsAbertos: number
   faturamentoPrevisto: number
   leadsNovos: number
   aReceber30dias: number
-  recebidoMes: number
-  previstMes: number
 }
 
-export type LeadsByDayItem = { date: string; count: number }
+export type DashboardFinance =
+  | {
+      criterion: 'evento'
+      faturamentoPrevisto: number
+      recebido: number
+      aReceber: number
+      custos: number
+      lucroPrevisto: number
+      margemPrevista: number | null
+      eventos: number
+      cancelados: { count: number; faturamentoPrevisto: number }
+    }
+  | {
+      criterion: 'recebimento'
+      recebido: number
+      pagamentos: number
+      eventos: number
+      semData: { count: number; valor: number }
+    }
+
+export type FinanceEvolutionItem =
+  | { key: string; label: string; faturamento: number; custos: number; lucro: number }
+  | { key: string; label: string; recebido: number }
+
+export type LeadsByDayItem = { key: string; label: string; count: number }
 export type LeadsByStageItem = { stage: string; count: number }
 
 export type UpcomingEvent = {
@@ -28,26 +55,31 @@ export type UpcomingEvent = {
 }
 
 export type DashboardData = {
+  period: { from: string; to: string; granularity: Granularity; criterion: AnalysisCriterion }
   kpi: DashboardKpi
-  leadsByDay: LeadsByDayItem[]
+  finance: DashboardFinance
+  financeEvolution: FinanceEvolutionItem[]
+  leadsByPeriod: LeadsByDayItem[]
   leadsByStage: LeadsByStageItem[]
   upcomingEvents: UpcomingEvent[]
 }
 
-async function fetchDashboard(bandSlug: string, days: number): Promise<DashboardData> {
-  const res = await fetch(
-    `/api/dashboard?bandSlug=${encodeURIComponent(bandSlug)}&days=${days}`
-  )
+async function fetchDashboard(bandSlug: string, sel: PeriodSelection): Promise<DashboardData> {
+  const params = new URLSearchParams({ bandSlug, from: sel.from, to: sel.to, criterio: sel.criterion })
+  const res = await fetch(`/api/dashboard?${params}`)
   if (!res.ok) throw new Error('Falha ao carregar dashboard')
   const json = await res.json()
   return json.data
 }
 
-const PERIOD_OPTIONS = [
-  { value: 7,  label: '7 dias' },
-  { value: 30, label: '30 dias' },
-  { value: 90, label: '90 dias' },
-]
+const PRESET_LABEL: Record<PeriodSelection['preset'], string> = {
+  '7d': 'Últimos 7 dias',
+  '30d': 'Últimos 30 dias',
+  '90d': 'Últimos 90 dias',
+  month: 'Este mês',
+  year: 'Este ano',
+  custom: 'Personalizado',
+}
 
 function DashboardSkeleton() {
   return (
@@ -67,51 +99,78 @@ function DashboardSkeleton() {
 }
 
 export function DashboardClient({ bandSlug }: { bandSlug: string }) {
-  const [days, setDays] = useState(30)
+  const [selection, setSelection] = useState<PeriodSelection>(() =>
+    selectionForPreset(DEFAULT_PRESET, 'evento'),
+  )
 
-  const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['dashboard', bandSlug, days],
-    queryFn: () => fetchDashboard(bandSlug, days),
+  const { data, isLoading, isError, isFetching, refetch } = useQuery({
+    queryKey: ['dashboard', bandSlug, selection.from, selection.to, selection.criterion],
+    queryFn: () => fetchDashboard(bandSlug, selection),
+    // Mantém o painel na tela enquanto o novo período carrega (sem piscar o skeleton).
+    placeholderData: keepPreviousData,
   })
 
-  if (isLoading) return <DashboardSkeleton />
+  const header = (
+    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+      <div>
+        <p className="text-xs uppercase tracking-wide text-gray-400">Período selecionado</p>
+        <p className="text-sm font-medium text-gray-900">
+          {PRESET_LABEL[selection.preset]} · {formatPeriodLabel(selection.from, selection.to)}
+          {isFetching && !isLoading && <span className="ml-2 text-xs font-normal text-gray-400">atualizando…</span>}
+        </p>
+      </div>
+      <PeriodFilter value={selection} onChange={setSelection} />
+    </div>
+  )
 
-  if (isError) {
+  if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-48 gap-4 text-gray-500">
-        <p>Não foi possível carregar o dashboard.</p>
-        <button
-          onClick={() => refetch()}
-          className="text-sm underline hover:text-gray-700"
-        >
-          Tentar novamente
-        </button>
+      <div className="space-y-6">
+        {header}
+        <DashboardSkeleton />
+      </div>
+    )
+  }
+
+  if (isError || !data) {
+    return (
+      <div className="space-y-6">
+        {header}
+        <div className="flex flex-col items-center justify-center h-48 gap-4 text-gray-500">
+          <p>Não foi possível carregar o dashboard.</p>
+          <button
+            onClick={() => refetch()}
+            className="text-sm underline hover:text-gray-700"
+          >
+            Tentar novamente
+          </button>
+        </div>
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end gap-1">
-        {PERIOD_OPTIONS.map(opt => (
-          <button
-            key={opt.value}
-            onClick={() => setDays(opt.value)}
-            className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-              days === opt.value
-                ? 'bg-gray-900 text-white'
-                : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
-            }`}
-          >
-            {opt.label}
-          </button>
-        ))}
-      </div>
-      <KpiCards kpi={data!.kpi} />
-      <LeadsByDayChart data={data!.leadsByDay} />
-      <div className="grid grid-cols-2 gap-4">
-        <LeadsByStageChart data={data!.leadsByStage} />
-        <UpcomingEvents events={data!.upcomingEvents} />
+      {header}
+      <KpiCards kpi={data.kpi} />
+      <section className="space-y-3">
+        <h2 className="text-sm font-medium text-gray-700">
+          Indicadores financeiros
+          <span className="ml-2 text-xs font-normal text-gray-400">
+            {data.period.criterion === 'evento' ? 'por data do evento' : 'por data do recebimento'}
+          </span>
+        </h2>
+        <FinanceCards finance={data.finance} />
+      </section>
+      <FinanceEvolutionChart
+        data={data.financeEvolution}
+        granularity={data.period.granularity}
+        criterion={data.period.criterion}
+      />
+      <LeadsByDayChart data={data.leadsByPeriod} granularity={data.period.granularity} />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <LeadsByStageChart data={data.leadsByStage} />
+        <UpcomingEvents events={data.upcomingEvents} />
       </div>
     </div>
   )

@@ -13,9 +13,12 @@ export function LeadsByStageChart({ data }: Props) {
 
   return (
     <div className="bg-white border rounded-lg p-6">
-      <h3 className="text-sm font-medium text-gray-700 mb-4">Leads por etapa</h3>
+      <h3 className="text-sm font-medium text-gray-700 mb-4">
+        Leads por etapa
+        <span className="ml-2 text-xs font-normal text-gray-400">criados no período</span>
+      </h3>
       {!hasData ? (
-        <p className="text-gray-400 text-sm">Nenhum lead cadastrado ainda.</p>
+        <p className="text-gray-400 text-sm">Nenhum lead criado no período.</p>
       ) : (
         <ResponsiveContainer width="100%" height={200}>
           <BarChart

@@ -3,7 +3,19 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/prisma'
 import { EventStatus } from '@/lib/generated/prisma/enums'
-import { computeReceivedAmount } from '@/lib/financas'
+import { computeReceivedAmount, serializeFinance } from '@/lib/financas'
+import { reconcileTeamCosts } from '@/lib/finance-service'
+import {
+  buildBuckets,
+  buildFinanceEvolution,
+  countByBucket,
+  parsePeriodRange,
+  pickGranularity,
+  summarizeEventFinances,
+  summarizePayments,
+  toISODate,
+  type AnalysisCriterion,
+} from '@/lib/dashboard-period'
 
 // 'closed'/'lost' — default pipeline terminal stages
 // 'closed_won'/'closed_lost' — common custom pipeline terminal stage names
@@ -18,6 +30,19 @@ const DEFAULT_STAGES = [
   { key: 'lost',          label: 'Perdido' },
 ]
 
+/** Período pedido: `from`/`to` (AAAA-MM-DD) ou, por compatibilidade, `days` (últimos N dias). */
+function resolveRequestedPeriod(searchParams: URLSearchParams): { from: string; to: string } {
+  const from = searchParams.get('from')
+  const to = searchParams.get('to')
+  if (from && to) return { from, to }
+  const days = Math.min(Math.max(parseInt(searchParams.get('days') ?? '30', 10) || 30, 1), 365)
+  const today = new Date()
+  return {
+    from: toISODate(new Date(today.getFullYear(), today.getMonth(), today.getDate() - (days - 1))),
+    to: toISODate(today),
+  }
+}
+
 export async function GET(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -25,10 +50,16 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url)
   const bandSlug = searchParams.get('bandSlug')
-  const daysParam = searchParams.get('days')
-  const days = daysParam ? Math.min(Math.max(parseInt(daysParam, 10) || 30, 1), 365) : 30
-
   if (!bandSlug) return NextResponse.json({ error: 'bandSlug is required' }, { status: 400 })
+
+  const { from, to } = resolveRequestedPeriod(searchParams)
+  const range = parsePeriodRange(from, to)
+  if ('error' in range) return NextResponse.json({ error: range.error }, { status: 400 })
+  const { start, end } = range
+  const criterion: AnalysisCriterion =
+    searchParams.get('criterio') === 'recebimento' ? 'recebimento' : 'evento'
+  const granularity = pickGranularity(start, end)
+  const buckets = buildBuckets(start, end, granularity)
 
   const dbUser = await prisma.user.findUnique({
     where: { supabase_id: user.id },
@@ -45,21 +76,29 @@ export async function GET(request: Request) {
       ? (raw as { key: string; label: string }[])
       : DEFAULT_STAGES
 
-  const startDate = new Date()
-  startDate.setDate(startDate.getDate() - (days - 1))
-  startDate.setHours(0, 0, 0, 0)
-
-  // KPI: leads abertos (fora dos status de fechamento)
+  // KPI atual (não depende do período): leads abertos (fora dos status de fechamento)
   const leadsAbertos = await prisma.lead.count({
     where: { band_id: bandId, status: { notIn: CLOSED_STATUSES } },
   })
 
-  // KPI: leads novos no período
-  const leadsNovos = await prisma.lead.count({
-    where: { band_id: bandId, created_at: { gte: startDate } },
+  // Leads criados no período — base de "leads novos", "leads por período" e "leads por etapa"
+  const leadsInPeriod = await prisma.lead.findMany({
+    where: { band_id: bandId, created_at: { gte: start, lte: end } },
+    select: { created_at: true, status: true },
   })
+  const leadsNovos = leadsInPeriod.length
+  const leadsByPeriod = countByBucket(leadsInPeriod.map(l => l.created_at), buckets, granularity)
+  const countByStage = new Map<string, number>()
+  for (const lead of leadsInPeriod) {
+    countByStage.set(lead.status, (countByStage.get(lead.status) ?? 0) + 1)
+  }
+  const leadsByStage = pipelineStages.map(s => ({
+    stage: s.label,
+    count: countByStage.get(s.key) ?? 0,
+  }))
 
-  // KPI: faturamento — soma do total das atrações dos eventos contratados/em andamento
+  // KPI atual (não depende do período): carteira — soma do total das atrações dos
+  // eventos contratados/em andamento
   const activeEvents = await prisma.event.findMany({
     where: { band_id: bandId, status: { in: [EventStatus.contracted, EventStatus.active] } },
     include: {
@@ -81,39 +120,7 @@ export async function GET(request: Request) {
     return sum + Math.max(0, subtotal - discount)
   }, 0)
 
-  // Leads por dia — todos os dias do intervalo, zeros incluídos
-  const leadsInPeriod = await prisma.lead.findMany({
-    where: { band_id: bandId, created_at: { gte: startDate } },
-    select: { created_at: true },
-  })
-  const countByDate = new Map<string, number>()
-  for (const lead of leadsInPeriod) {
-    const dateStr = lead.created_at.toISOString().slice(0, 10)
-    countByDate.set(dateStr, (countByDate.get(dateStr) ?? 0) + 1)
-  }
-  const leadsByDay: { date: string; count: number }[] = []
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date()
-    d.setDate(d.getDate() - i)
-    const dateStr = d.toISOString().slice(0, 10)
-    leadsByDay.push({ date: dateStr, count: countByDate.get(dateStr) ?? 0 })
-  }
-
-  // Leads por etapa do pipeline
-  const allLeads = await prisma.lead.findMany({
-    where: { band_id: bandId },
-    select: { status: true },
-  })
-  const countByStage = new Map<string, number>()
-  for (const lead of allLeads) {
-    countByStage.set(lead.status, (countByStage.get(lead.status) ?? 0) + 1)
-  }
-  const leadsByStage = pipelineStages.map(s => ({
-    stage: s.label,
-    count: countByStage.get(s.key) ?? 0,
-  }))
-
-  // KPI financeiro: a receber nos próximos 30 dias
+  // KPI atual (não depende do período): a receber nos próximos 30 dias
   const hoje = new Date(); hoje.setHours(0, 0, 0, 0)
   const em30dias = new Date(hoje); em30dias.setDate(hoje.getDate() + 30); em30dias.setHours(23, 59, 59)
   const financesNext30 = await prisma.eventFinance.findMany({
@@ -125,17 +132,58 @@ export async function GET(request: Request) {
     return s + Math.max(0, saldo)
   }, 0)
 
-  // KPI financeiro: recebido e previsto no mês atual
-  const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1)
-  const fimMes    = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 23, 59, 59)
-  const financesMes = await prisma.eventFinance.findMany({
-    where: { band_id: bandId, event_date: { gte: inicioMes, lte: fimMes } },
-    select: { expected_revenue: true, received_amount: true, payments: { select: { amount: true } } },
-  })
-  const recebidoMes = financesMes.reduce((s, f) => s + computeReceivedAmount(f), 0)
-  const previstMes  = financesMes.reduce((s, f) => s + parseFloat(f.expected_revenue.toString()), 0)
+  // Indicadores financeiros do período — um critério por vez, nunca misturados.
+  let finance
+  let financeEvolution
+  if (criterion === 'evento') {
+    // Mesma consulta do Financeiro Geral (GET /api/financas), só que com intervalo livre:
+    // custos de equipe da Formação curados antes, itens e pagamentos completos, e a soma
+    // feita por calcTotals/computeEventFinance. Cancelados entram, como lá.
+    await reconcileTeamCosts({ bandId })
+    const rows = await prisma.eventFinance.findMany({
+      where: { band_id: bandId, event_date: { gte: start, lte: end } },
+      include: {
+        items: { orderBy: { created_at: 'asc' } },
+        payments: { orderBy: { payment_date: 'asc' } },
+        event: { select: { cancelled_at: true } },
+      },
+      orderBy: { event_date: 'asc' },
+    })
+    const finances = rows.map(r => ({ ...serializeFinance(r), cancelled: r.event?.cancelled_at != null }))
+    finance = { criterion, ...summarizeEventFinances(finances) }
+    financeEvolution = buildFinanceEvolution(finances, buckets, granularity)
+  } else {
+    // Somente recebimentos registrados (EventPayment), pela data real de cada um.
+    const payments = await prisma.eventPayment.findMany({
+      where: { payment_date: { gte: start, lte: end }, finance: { band_id: bandId } },
+      select: { finance_id: true, payment_date: true, amount: true },
+    })
+    const summary = summarizePayments(
+      payments.map(p => ({ finance_id: p.finance_id, payment_date: p.payment_date, amount: Number(p.amount) })),
+      buckets,
+      granularity,
+    )
+    // Valores legados (received_amount sem nenhum EventPayment) não têm data — ficam
+    // fora deste critério e são apenas informados, sem estimar uma data.
+    const legacy = await prisma.eventFinance.aggregate({
+      where: { band_id: bandId, payments: { none: {} }, received_amount: { gt: 0 } },
+      _count: { _all: true },
+      _sum: { received_amount: true },
+    })
+    finance = {
+      criterion,
+      recebido: summary.recebido,
+      pagamentos: summary.pagamentos,
+      eventos: summary.eventos,
+      semData: {
+        count: legacy._count._all,
+        valor: Number(legacy._sum.received_amount ?? 0),
+      },
+    }
+    financeEvolution = summary.evolution
+  }
 
-  // Próximos eventos
+  // Próximos eventos (não depende do período)
   const upcoming = await prisma.event.findMany({
     where: { band_id: bandId, event_date: { gte: new Date() } },
     select: { id: true, client_name: true, event_date: true, event_type: true },
@@ -151,8 +199,11 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     data: {
-      kpi: { leadsAbertos, faturamentoPrevisto, leadsNovos, aReceber30dias, recebidoMes, previstMes },
-      leadsByDay,
+      period: { from, to, granularity, criterion },
+      kpi: { leadsAbertos, faturamentoPrevisto, leadsNovos, aReceber30dias },
+      finance,
+      financeEvolution,
+      leadsByPeriod,
       leadsByStage,
       upcomingEvents,
     },

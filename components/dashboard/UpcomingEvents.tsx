@@ -16,7 +16,10 @@ type Props = { events: UpcomingEvent[] }
 export function UpcomingEvents({ events }: Props) {
   return (
     <div className="bg-white border rounded-lg p-6">
-      <h3 className="text-sm font-medium text-gray-700 mb-4">Próximos eventos</h3>
+      <h3 className="text-sm font-medium text-gray-700 mb-4">
+        Próximos eventos
+        <span className="ml-2 text-xs font-normal text-gray-400">não depende do período</span>
+      </h3>
       {events.length === 0 ? (
         <p className="text-gray-400 text-sm">Nenhum evento próximo.</p>
       ) : (

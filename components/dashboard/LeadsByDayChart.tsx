@@ -4,23 +4,22 @@
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts'
-import { format, parseISO } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
+import type { Granularity } from '@/lib/dashboard-period'
 import type { LeadsByDayItem } from './DashboardClient'
 
-type Props = { data: LeadsByDayItem[] }
+type Props = { data: LeadsByDayItem[]; granularity: Granularity }
 
-export function LeadsByDayChart({ data }: Props) {
+// Leads agrupados pela data de criação, no mesmo agrupamento da Evolução Financeira.
+const TITLE: Record<Granularity, string> = { day: 'Leads por dia', week: 'Leads por semana', month: 'Leads por mês' }
+const TOOLTIP_PREFIX: Record<Granularity, string> = { day: 'Dia', week: 'Semana de', month: 'Mês' }
+
+export function LeadsByDayChart({ data, granularity }: Props) {
   const hasData = data.some(d => d.count > 0)
-
-  const chartData = data.map(d => ({
-    ...d,
-    label: format(parseISO(d.date), 'dd/MM', { locale: ptBR }),
-  }))
+  const chartData = data
 
   return (
     <div className="bg-white border rounded-lg p-6">
-      <h3 className="text-sm font-medium text-gray-700 mb-4">Leads por dia</h3>
+      <h3 className="text-sm font-medium text-gray-700 mb-4">{TITLE[granularity]}</h3>
       {!hasData ? (
         <p className="text-gray-400 text-sm">Nenhum lead cadastrado no período.</p>
       ) : (
@@ -43,7 +42,7 @@ export function LeadsByDayChart({ data }: Props) {
             <Tooltip
               cursor={{ fill: '#f9fafb' }}
               formatter={(value) => [value ?? 0, 'Leads']}
-              labelFormatter={(label) => `Dia: ${label}`}
+              labelFormatter={(label) => `${TOOLTIP_PREFIX[granularity]}: ${label}`}
             />
             <Bar dataKey="count" fill="#3b82f6" radius={[3, 3, 0, 0]} />
           </BarChart>
