@@ -15,9 +15,10 @@ type ContractWithLead = ContractFull & {
 type Props = {
   contract: ContractWithLead
   onApprove: () => Promise<void>
+  onMarkSigned: () => Promise<void>
 }
 
-export function ContractReview({ contract, onApprove }: Props) {
+export function ContractReview({ contract, onApprove, onMarkSigned }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -25,13 +26,13 @@ export function ContractReview({ contract, onApprove }: Props) {
     ? fillTemplate(contract.template.content, buildContractData(contract.event.lead))
     : contract.template.content
 
-  async function handleApprove() {
+  async function run(action: () => Promise<void>, errorMessage: string) {
     setLoading(true)
     setError(null)
     try {
-      await onApprove()
+      await action()
     } catch {
-      setError('Erro ao aprovar contrato. Tente novamente.')
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -56,25 +57,34 @@ export function ContractReview({ contract, onApprove }: Props) {
         <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans">{filledContent}</pre>
       </div>
 
-      {contract.status === 'draft' && (
+      {(contract.status === 'draft' || contract.status === 'pending_review') && (
         <div className="flex justify-end">
           <button
-            onClick={handleApprove}
+            onClick={() => run(onApprove, 'Erro ao marcar contrato como enviado. Tente novamente.')}
             disabled={loading}
             className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
           >
-            {loading ? 'Enviando...' : 'Enviar para Assinatura'}
+            {loading ? 'Salvando...' : 'Marcar como enviado'}
           </button>
         </div>
       )}
 
-      {contract.zapsign_link && (
-        <div className="bg-green-50 border border-green-200 rounded p-3 text-sm text-green-700">
-          Link de assinatura:{' '}
-          <a href={contract.zapsign_link} target="_blank" rel="noopener noreferrer" className="underline">
-            {contract.zapsign_link}
-          </a>
+      {contract.status === 'sent' && (
+        <div className="flex justify-end">
+          <button
+            onClick={() => run(onMarkSigned, 'Erro ao marcar contrato como assinado. Tente novamente.')}
+            disabled={loading}
+            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50"
+          >
+            {loading ? 'Salvando...' : 'Marcar como assinado'}
+          </button>
         </div>
+      )}
+
+      {contract.status === 'signed' && contract.signed_at && (
+        <p className="text-sm text-gray-500 text-right">
+          Assinado em {new Date(contract.signed_at).toLocaleDateString('pt-BR')}
+        </p>
       )}
     </div>
   )

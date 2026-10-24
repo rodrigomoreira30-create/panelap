@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { forbiddenUnlessStaff } from '@/lib/auth/roles'
 import { getSessionUser } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import { runSdrAgent } from '@/lib/claude/agents/sdr-agent'
@@ -12,6 +13,8 @@ const schema = z.object({
 export async function POST(request: Request) {
   const sessionUser = await getSessionUser()
   if (!sessionUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const forbidden = forbiddenUnlessStaff(sessionUser)
+  if (forbidden) return forbidden
 
   const dbUser = await prisma.user.findUnique({
     where: { id: sessionUser.id },

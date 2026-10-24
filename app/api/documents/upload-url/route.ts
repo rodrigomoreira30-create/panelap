@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { forbiddenUnlessStaff } from '@/lib/auth/roles'
 import { getSessionUser } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import { uploadUrlSchema } from '@/lib/validations/document'
@@ -7,6 +8,8 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 export async function POST(request: Request) {
   const sessionUser = await getSessionUser()
   if (!sessionUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const forbidden = forbiddenUnlessStaff(sessionUser)
+  if (forbidden) return forbidden
 
   const body = await request.json()
   const parsed = uploadUrlSchema.safeParse(body)

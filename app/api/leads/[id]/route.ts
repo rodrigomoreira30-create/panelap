@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { forbiddenUnlessStaff } from '@/lib/auth/roles'
 import { createClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/prisma'
 import { leadUpdateSchema } from '@/lib/validations/lead'
@@ -20,6 +21,8 @@ export async function GET(
   const { id } = await params
   const sessionUser = await getSessionUser()
   if (!sessionUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const forbidden = forbiddenUnlessStaff(sessionUser)
+  if (forbidden) return forbidden
 
   const lead = await prisma.lead.findUnique({
     where: { id, band_id: sessionUser.band_id },
@@ -40,6 +43,8 @@ export async function PATCH(
   const { id } = await params
   const sessionUser = await getSessionUser()
   if (!sessionUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const forbidden = forbiddenUnlessStaff(sessionUser)
+  if (forbidden) return forbidden
 
   if (!['admin', 'commercial'].includes(sessionUser.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -121,6 +126,8 @@ export async function DELETE(
   const force = new URL(request.url).searchParams.get('force') === 'true'
   const sessionUser = await getSessionUser()
   if (!sessionUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const forbidden = forbiddenUnlessStaff(sessionUser)
+  if (forbidden) return forbidden
 
   if (sessionUser.role !== 'admin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })

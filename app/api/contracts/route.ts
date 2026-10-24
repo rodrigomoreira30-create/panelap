@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { forbiddenUnlessStaff } from '@/lib/auth/roles'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { getSessionUser } from '@/lib/auth/session'
@@ -11,6 +12,8 @@ const contractCreateSchema = z.object({
 export async function GET(_request: Request) {
   const sessionUser = await getSessionUser()
   if (!sessionUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const forbidden = forbiddenUnlessStaff(sessionUser)
+  if (forbidden) return forbidden
 
   const contracts = await prisma.contract.findMany({
     where: { event: { band_id: sessionUser.band_id } },
@@ -24,6 +27,8 @@ export async function GET(_request: Request) {
 export async function POST(request: Request) {
   const sessionUser = await getSessionUser()
   if (!sessionUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const forbidden = forbiddenUnlessStaff(sessionUser)
+  if (forbidden) return forbidden
 
   const body = await request.json()
   const parsed = contractCreateSchema.safeParse(body)

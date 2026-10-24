@@ -18,14 +18,7 @@ vi.mock('@/lib/prisma', () => ({
 }))
 
 vi.mock('@/lib/auth/session', () => ({
-  getSessionUser: vi.fn().mockResolvedValue({ id: 'user-1', band_id: 'band-1', supabase_id: 'sup-1' }),
-}))
-
-vi.mock('@/lib/zapsign/client', () => ({
-  createZapSignDocument: vi.fn().mockResolvedValue({
-    token: 'zap-token-123',
-    signers: [{ sign_url: 'https://zapsign.com/sign/abc' }],
-  }),
+  getSessionUser: vi.fn().mockResolvedValue({ id: 'user-1', band_id: 'band-1', supabase_id: 'sup-1', role: 'admin' }),
 }))
 
 vi.mock('@/lib/contracts/template-fill', () => ({
@@ -97,8 +90,7 @@ describe('POST /api/contracts', () => {
   it('creates a draft contract with valid body', async () => {
     const { prisma } = await import('@/lib/prisma')
     const { getSessionUser } = await import('@/lib/auth/session')
-
-    vi.mocked(getSessionUser).mockResolvedValueOnce({ id: 'user-1', band_id: 'band-1', supabase_id: 'sup-1' })
+    vi.mocked(getSessionUser).mockResolvedValueOnce({ id: 'user-1', band_id: 'band-1', supabase_id: 'sup-1', role: 'admin' })
     vi.mocked(prisma.event.findFirst).mockResolvedValueOnce({
       id: 'event-1',
       band_id: 'band-1',
@@ -136,8 +128,7 @@ describe('POST /api/contracts', () => {
   it('returns 404 when event does not belong to band', async () => {
     const { prisma } = await import('@/lib/prisma')
     const { getSessionUser } = await import('@/lib/auth/session')
-
-    vi.mocked(getSessionUser).mockResolvedValueOnce({ id: 'user-1', band_id: 'band-1', supabase_id: 'sup-1' })
+    vi.mocked(getSessionUser).mockResolvedValueOnce({ id: 'user-1', band_id: 'band-1', supabase_id: 'sup-1', role: 'admin' })
     vi.mocked(prisma.event.findFirst).mockResolvedValueOnce(null)
 
     const request = makeRequest('POST', { event_id: 'clxxxxxxxxxxxxxxxxxxxxxx', template_id: 'clxxxxxxxxxxxxxxxxxxxxxy' })
@@ -158,8 +149,7 @@ describe('GET /api/contracts/[id]', () => {
   it('returns a single contract with relations', async () => {
     const { prisma } = await import('@/lib/prisma')
     const { getSessionUser } = await import('@/lib/auth/session')
-
-    vi.mocked(getSessionUser).mockResolvedValueOnce({ id: 'user-1', band_id: 'band-1', supabase_id: 'sup-1' })
+    vi.mocked(getSessionUser).mockResolvedValueOnce({ id: 'user-1', band_id: 'band-1', supabase_id: 'sup-1', role: 'admin' })
 
     const mockContract = {
       id: 'contract-1',
@@ -192,84 +182,129 @@ describe('GET /api/contracts/[id]', () => {
   })
 })
 
-// ── Test 5: POST /api/contracts/[id]/approve ──────────────────────────────────
+// ── Test 5: POST /api/contracts/[id]/approve (marcar como enviado) ───────────
 describe('POST /api/contracts/[id]/approve', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('sends contract to ZapSign and updates DB', async () => {
+  it('marca o contrato como enviado sem chamar serviço externo de assinatura', async () => {
     const { prisma } = await import('@/lib/prisma')
-    const { getSessionUser } = await import('@/lib/auth/session')
-    const { createZapSignDocument } = await import('@/lib/zapsign/client')
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
 
-    vi.mocked(getSessionUser).mockResolvedValueOnce({ id: 'user-1', band_id: 'band-1', supabase_id: 'sup-1' })
+    vi.mocked(prisma.contract.findFirst).mockResolvedValueOnce({ id: 'contract-1', status: 'draft' } as any)
+    vi.mocked(prisma.contract.update).mockResolvedValueOnce({ id: 'contract-1', status: 'sent', reviewed_by: 'user-1' } as any)
 
-    const mockContract = {
-      id: 'contract-1',
-      event_id: 'event-1',
-      template_id: 'tmpl-1',
-      status: 'draft',
-      event: {
-        id: 'event-1',
-        band_id: 'band-1',
-        client_name: 'Test Client',
-        lead: {
-          id: 'lead-1',
-          client_name: 'Test Client',
-          phone: '11999999999',
-          event_type: 'wedding',
-          event_date: new Date('2026-08-15'),
-          city: 'São Paulo',
-          venue_name: 'Espaço Fest',
-          budget: null,
-          observations: null,
-        },
-      },
-      template: { id: 'tmpl-1', name: 'Standard Template', content: 'Hello {{cliente_nome}}' },
-    }
-    vi.mocked(prisma.contract.findFirst).mockResolvedValueOnce(mockContract as any)
-
-    const updatedContract = {
-      ...mockContract,
-      status: 'sent',
-      zapsign_doc_id: 'zap-token-123',
-      zapsign_link: 'https://zapsign.com/sign/abc',
-      reviewed_by: 'user-1',
-    }
-    vi.mocked(prisma.contract.update).mockResolvedValueOnce(updatedContract as any)
-
-    const request = makeParamRequest('POST')
-    const response = await APPROVE(request, { params: mockParams })
+    const response = await APPROVE(makeParamRequest('POST'), { params: mockParams })
 
     expect(response.status).toBe(200)
-    const json = await response.json()
-
-    expect(createZapSignDocument).toHaveBeenCalledWith(
-      expect.objectContaining({
-        name: expect.stringContaining('Test Client'),
-        signers: expect.arrayContaining([
-          expect.objectContaining({
-            name: 'Test Client',
-            phone_number: '11999999999',
-          }),
-        ]),
-      })
+    expect((await response.json()).data.status).toBe('sent')
+    expect(fetchSpy).not.toHaveBeenCalled()
+    expect(vi.mocked(prisma.contract.findFirst)).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'contract-1', event: { band_id: 'band-1' } } })
     )
+    expect(vi.mocked(prisma.contract.update)).toHaveBeenCalledWith({
+      where: { id: 'contract-1' },
+      data: { status: 'sent', reviewed_by: 'user-1' },
+    })
+    fetchSpy.mockRestore()
+  })
 
-    expect(vi.mocked(prisma.contract.update)).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { id: 'contract-1' },
-        data: expect.objectContaining({
-          zapsign_doc_id: 'zap-token-123',
-          zapsign_link: 'https://zapsign.com/sign/abc',
-          status: 'sent',
-          reviewed_by: 'user-1',
-        }),
-      })
-    )
+  it('retorna 409 e não altera contrato já assinado', async () => {
+    const { prisma } = await import('@/lib/prisma')
+    vi.mocked(prisma.contract.findFirst).mockResolvedValueOnce({ id: 'contract-1', status: 'signed' } as any)
 
-    expect(json.data.status).toBe('sent')
-    expect(json.zapDoc).toBeUndefined()
+    const response = await APPROVE(makeParamRequest('POST'), { params: mockParams })
+
+    expect(response.status).toBe(409)
+    expect(prisma.contract.update).not.toHaveBeenCalled()
+  })
+
+  it('retorna 404 para contrato de outra banda', async () => {
+    const { prisma } = await import('@/lib/prisma')
+    vi.mocked(prisma.contract.findFirst).mockResolvedValueOnce(null)
+
+    const response = await APPROVE(makeParamRequest('POST'), { params: mockParams })
+
+    expect(response.status).toBe(404)
+    expect(prisma.contract.update).not.toHaveBeenCalled()
+  })
+})
+
+// ── Test 6: PATCH /api/contracts/[id] (marcar como assinado) ─────────────────
+describe('PATCH /api/contracts/[id] — assinatura manual', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('ao marcar como assinado grava signed_at e emite contract.signed', async () => {
+    const { prisma } = await import('@/lib/prisma')
+    const { eventBus } = await import('@/lib/events/internal-bus')
+    const emitSpy = vi.spyOn(eventBus, 'emit')
+
+    vi.mocked(prisma.contract.findFirst).mockResolvedValueOnce({ id: 'contract-1', status: 'sent', signed_at: null } as any)
+    vi.mocked(prisma.contract.update).mockResolvedValueOnce({ id: 'contract-1', status: 'signed' } as any)
+
+    const response = await PATCH(makeParamRequest('PATCH', { status: 'signed' }), { params: mockParams })
+
+    expect(response.status).toBe(200)
+    expect(vi.mocked(prisma.contract.update)).toHaveBeenCalledWith({
+      where: { id: 'contract-1' },
+      data: { status: 'signed', signed_at: expect.any(Date) },
+    })
+    expect(emitSpy).toHaveBeenCalledWith('contract.signed', { contract_id: 'contract-1' })
+    emitSpy.mockRestore()
+  })
+
+  it('não reemite o evento nem sobrescreve signed_at de contrato já assinado', async () => {
+    const { prisma } = await import('@/lib/prisma')
+    const { eventBus } = await import('@/lib/events/internal-bus')
+    const emitSpy = vi.spyOn(eventBus, 'emit')
+    const signedAt = new Date('2026-09-01T12:00:00Z')
+
+    vi.mocked(prisma.contract.findFirst).mockResolvedValueOnce({ id: 'contract-1', status: 'signed', signed_at: signedAt } as any)
+    vi.mocked(prisma.contract.update).mockResolvedValueOnce({ id: 'contract-1', status: 'signed' } as any)
+
+    await PATCH(makeParamRequest('PATCH', { status: 'signed' }), { params: mockParams })
+
+    expect(vi.mocked(prisma.contract.update)).toHaveBeenCalledWith({
+      where: { id: 'contract-1' },
+      data: { status: 'signed' },
+    })
+    expect(emitSpy).not.toHaveBeenCalled()
+    emitSpy.mockRestore()
+  })
+})
+
+// ── Test 7: permissões ───────────────────────────────────────────────────────
+describe('Contratos — permissões', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('retorna 401 sem autenticação', async () => {
+    const { getSessionUser } = await import('@/lib/auth/session')
+    vi.mocked(getSessionUser).mockResolvedValueOnce(null)
+
+    const response = await GET(makeRequest('GET'))
+    expect(response.status).toBe(401)
+  })
+
+  it.each([
+    ['GET /api/contracts', () => GET(makeRequest('GET'))],
+    ['GET /api/contracts/[id]', () => GET_ONE(makeParamRequest('GET'), { params: mockParams })],
+    ['PATCH /api/contracts/[id]', () => PATCH(makeParamRequest('PATCH', { status: 'signed' }), { params: mockParams })],
+    ['POST /api/contracts/[id]/approve', () => APPROVE(makeParamRequest('POST'), { params: mockParams })],
+  ])('músico recebe 403 em %s', async (_name, call) => {
+    const { prisma } = await import('@/lib/prisma')
+    const { getSessionUser } = await import('@/lib/auth/session')
+    vi.mocked(getSessionUser).mockResolvedValueOnce({ id: 'mus-1', band_id: 'band-1', supabase_id: 'sup-9', role: 'musician' })
+
+    const response = await call()
+
+    expect(response.status).toBe(403)
+    expect(prisma.contract.findMany).not.toHaveBeenCalled()
+    expect(prisma.contract.findFirst).not.toHaveBeenCalled()
+    expect(prisma.contract.update).not.toHaveBeenCalled()
   })
 })

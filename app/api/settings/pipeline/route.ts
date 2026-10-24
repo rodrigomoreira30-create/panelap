@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { forbiddenUnlessStaff } from '@/lib/auth/roles'
 import { getSessionUser } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
@@ -13,6 +14,8 @@ const stageSchema = z.object({
 export async function GET() {
   const sessionUser = await getSessionUser()
   if (!sessionUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const forbidden = forbiddenUnlessStaff(sessionUser)
+  if (forbidden) return forbidden
 
   const band = await prisma.band.findUnique({
     where: { id: sessionUser.band_id },
@@ -25,6 +28,8 @@ export async function GET() {
 export async function PATCH(request: Request) {
   const sessionUser = await getSessionUser()
   if (!sessionUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const forbidden = forbiddenUnlessStaff(sessionUser)
+  if (forbidden) return forbidden
 
   const dbUser = await prisma.user.findUnique({
     where: { id: sessionUser.id },

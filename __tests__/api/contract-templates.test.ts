@@ -49,6 +49,7 @@ describe('GET /api/contract-templates', () => {
     vi.mocked(prisma.user.findUnique).mockResolvedValueOnce({
       id: 'user-1',
       band_id: 'band-1',
+      role: 'admin',
     } as any)
 
     const mockTemplates = [
@@ -97,6 +98,7 @@ describe('POST /api/contract-templates', () => {
     vi.mocked(prisma.user.findUnique).mockResolvedValueOnce({
       id: 'user-1',
       band_id: 'band-1',
+      role: 'admin',
     } as any)
 
     vi.mocked(prisma.contractTemplate.updateMany).mockResolvedValueOnce({ count: 0 } as any)
@@ -133,6 +135,7 @@ describe('POST /api/contract-templates', () => {
     vi.mocked(prisma.user.findUnique).mockResolvedValueOnce({
       id: 'user-1',
       band_id: 'band-1',
+      role: 'admin',
     } as any)
 
     const request = makeRequest('POST', {
@@ -158,6 +161,7 @@ describe('PATCH /api/contract-templates/[id]', () => {
     vi.mocked(prisma.user.findUnique).mockResolvedValueOnce({
       id: 'user-1',
       band_id: 'band-1',
+      role: 'admin',
     } as any)
 
     const updated = {
@@ -200,6 +204,7 @@ describe('DELETE /api/contract-templates/[id]', () => {
     vi.mocked(prisma.user.findUnique).mockResolvedValueOnce({
       id: 'user-1',
       band_id: 'band-1',
+      role: 'admin',
     } as any)
 
     vi.mocked(prisma.contractTemplate.delete).mockResolvedValueOnce({

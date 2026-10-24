@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { forbiddenUnlessStaff } from '@/lib/auth/roles'
 import { createClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/prisma'
 import { leadCreateSchema } from '@/lib/validations/lead'
@@ -13,6 +14,8 @@ async function getSessionUser() {
 export async function GET(request: Request) {
   const sessionUser = await getSessionUser()
   if (!sessionUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const forbidden = forbiddenUnlessStaff(sessionUser)
+  if (forbidden) return forbidden
 
   const { searchParams } = new URL(request.url)
   const status = searchParams.get('status')
@@ -37,6 +40,8 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const sessionUser = await getSessionUser()
   if (!sessionUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const forbidden = forbiddenUnlessStaff(sessionUser)
+  if (forbidden) return forbidden
 
   if (!['admin', 'commercial'].includes(sessionUser.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })

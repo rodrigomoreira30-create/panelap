@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { forbiddenUnlessStaff } from '@/lib/auth/roles'
 import { getSessionUser } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import { eventUpdateSchema } from '@/lib/validations/event'
@@ -10,6 +11,8 @@ export async function GET(
   const { id } = await params
   const sessionUser = await getSessionUser()
   if (!sessionUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const forbidden = forbiddenUnlessStaff(sessionUser)
+  if (forbidden) return forbidden
 
   const event = await prisma.event.findFirst({
     where: { id, band_id: sessionUser.band_id },
@@ -35,6 +38,8 @@ export async function PATCH(
   const { id } = await params
   const sessionUser = await getSessionUser()
   if (!sessionUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const forbidden = forbiddenUnlessStaff(sessionUser)
+  if (forbidden) return forbidden
 
   // Role check — get full user to check role
   const fullUser = await prisma.user.findUnique({

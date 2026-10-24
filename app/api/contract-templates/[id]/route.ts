@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { forbiddenUnlessStaff } from '@/lib/auth/roles'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@/lib/generated/prisma/client'
 import { getSessionUser } from '@/lib/auth/session'
@@ -11,6 +12,8 @@ export async function GET(
   const { id } = await params
   const dbUser = await getSessionUser()
   if (!dbUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const forbidden = forbiddenUnlessStaff(dbUser)
+  if (forbidden) return forbidden
 
   const template = await prisma.contractTemplate.findFirst({
     where: { id, band_id: dbUser.band_id },
@@ -27,6 +30,8 @@ export async function PATCH(
   const { id } = await params
   const dbUser = await getSessionUser()
   if (!dbUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const forbidden = forbiddenUnlessStaff(dbUser)
+  if (forbidden) return forbidden
 
   const body = await request.json()
   const parsed = templateUpdateSchema.safeParse(body)
@@ -78,6 +83,8 @@ export async function DELETE(
   const { id } = await params
   const dbUser = await getSessionUser()
   if (!dbUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const forbidden = forbiddenUnlessStaff(dbUser)
+  if (forbidden) return forbidden
 
   const band_id = dbUser.band_id
 

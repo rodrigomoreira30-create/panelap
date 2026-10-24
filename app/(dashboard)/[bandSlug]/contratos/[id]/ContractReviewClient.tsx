@@ -19,10 +19,25 @@ export function ContractReviewClient({ contract }: Props) {
     })
     if (!res.ok) {
       const json = await res.json()
-      throw new Error(json.error ?? 'Erro ao aprovar contrato')
+      throw new Error(json.error ?? 'Erro ao marcar contrato como enviado')
     }
     router.refresh()
   }
 
-  return <ContractReview contract={contract} onApprove={handleApprove} />
+  async function handleMarkSigned() {
+    const res = await fetch(`/api/contracts/${contract.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'signed' }),
+    })
+    if (!res.ok) {
+      const json = await res.json()
+      throw new Error(json.error ?? 'Erro ao marcar contrato como assinado')
+    }
+    router.refresh()
+  }
+
+  return (
+    <ContractReview contract={contract} onApprove={handleApprove} onMarkSigned={handleMarkSigned} />
+  )
 }

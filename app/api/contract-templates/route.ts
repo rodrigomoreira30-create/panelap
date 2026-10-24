@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { forbiddenUnlessStaff } from '@/lib/auth/roles'
 import { prisma } from '@/lib/prisma'
 import { getSessionUser } from '@/lib/auth/session'
 import { templateCreateSchema } from '@/lib/validations/contract'
@@ -6,6 +7,8 @@ import { templateCreateSchema } from '@/lib/validations/contract'
 export async function GET(_request: Request) {
   const dbUser = await getSessionUser()
   if (!dbUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const forbidden = forbiddenUnlessStaff(dbUser)
+  if (forbidden) return forbidden
 
   const templates = await prisma.contractTemplate.findMany({
     where: { band_id: dbUser.band_id },
@@ -18,6 +21,8 @@ export async function GET(_request: Request) {
 export async function POST(request: Request) {
   const dbUser = await getSessionUser()
   if (!dbUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const forbidden = forbiddenUnlessStaff(dbUser)
+  if (forbidden) return forbidden
 
   const body = await request.json()
   const parsed = templateCreateSchema.safeParse(body)

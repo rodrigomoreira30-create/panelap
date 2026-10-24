@@ -16,7 +16,7 @@ export function ContractListClient({ contracts, bandSlug }: Props) {
     const res = await fetch(`/api/contracts/${id}/approve`, { method: 'POST' })
     if (!res.ok) {
       const json = await res.json()
-      alert(json.error ?? 'Erro ao aprovar contrato')
+      alert(json.error ?? 'Erro ao marcar contrato como enviado')
       return
     }
     router.refresh()

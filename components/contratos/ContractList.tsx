@@ -38,7 +38,7 @@ export function ContractList({ contracts, onApprove, onView }: Props) {
                 onClick={() => onApprove(contract.id)}
                 className="text-sm bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
               >
-                Aprovar
+                Marcar como enviado
               </button>
             )}
           </div>

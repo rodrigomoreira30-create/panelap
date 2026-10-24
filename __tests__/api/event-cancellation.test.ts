@@ -33,7 +33,7 @@ function req(method: string, body?: unknown): Request {
 async function setup({ role = 'admin', event }: { role?: string; event?: Record<string, unknown> | null }) {
   const { prisma } = await import('@/lib/prisma')
   const { getSessionUser } = await import('@/lib/auth/session')
-  vi.mocked(getSessionUser).mockResolvedValue({ id: 'user-1', band_id: 'band-1', supabase_id: 'sup-1' } as any)
+  vi.mocked(getSessionUser).mockResolvedValue({ id: 'user-1', band_id: 'band-1', supabase_id: 'sup-1', role: 'admin' } as any)
   vi.mocked(prisma.user.findUnique).mockResolvedValue({ role } as any)
   vi.mocked(prisma.event.findFirst).mockResolvedValue(
     (event === undefined

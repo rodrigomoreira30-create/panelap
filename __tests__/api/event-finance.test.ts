@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { GET } from '@/app/api/events/[id]/finance/route'
 
 vi.mock('@/lib/auth/session', () => ({
-  getSessionUser: vi.fn().mockResolvedValue({ id: 'user-1', band_id: 'band-1', supabase_id: 'sup-1' }),
+  getSessionUser: vi.fn().mockResolvedValue({ id: 'user-1', band_id: 'band-1', supabase_id: 'sup-1', role: 'admin' }),
 }))
 
 vi.mock('@/lib/prisma', () => ({

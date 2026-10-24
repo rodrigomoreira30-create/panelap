@@ -3,7 +3,7 @@ import { GET } from '@/app/api/events/route'
 import { GET as GET_ONE, PATCH } from '@/app/api/events/[id]/route'
 
 vi.mock('@/lib/auth/session', () => ({
-  getSessionUser: vi.fn().mockResolvedValue({ id: 'user-1', band_id: 'band-1', supabase_id: 'sup-1' }),
+  getSessionUser: vi.fn().mockResolvedValue({ id: 'user-1', band_id: 'band-1', supabase_id: 'sup-1', role: 'admin' }),
 }))
 
 vi.mock('@/lib/prisma', () => ({
@@ -111,7 +111,7 @@ describe('GET /api/events/[id]', () => {
     const { prisma } = await import('@/lib/prisma')
     const { getSessionUser } = await import('@/lib/auth/session')
 
-    vi.mocked(getSessionUser).mockResolvedValueOnce({ id: 'user-1', band_id: 'band-1', supabase_id: 'sup-1' })
+    vi.mocked(getSessionUser).mockResolvedValueOnce({ id: 'user-1', band_id: 'band-1', supabase_id: 'sup-1', role: 'admin' })
 
     const mockEvent = {
       id: 'event-1',
@@ -152,7 +152,7 @@ describe('GET /api/events/[id] — not found', () => {
     const { prisma } = await import('@/lib/prisma')
     const { getSessionUser } = await import('@/lib/auth/session')
 
-    vi.mocked(getSessionUser).mockResolvedValueOnce({ id: 'user-1', band_id: 'band-1', supabase_id: 'sup-1' })
+    vi.mocked(getSessionUser).mockResolvedValueOnce({ id: 'user-1', band_id: 'band-1', supabase_id: 'sup-1', role: 'admin' })
     vi.mocked(prisma.event.findFirst).mockResolvedValueOnce(null)
 
     const request = makeRequest('GET', 'http://localhost:3000/api/events/nonexistent')
@@ -174,7 +174,7 @@ describe('PATCH /api/events/[id]', () => {
     const { prisma } = await import('@/lib/prisma')
     const { getSessionUser } = await import('@/lib/auth/session')
 
-    vi.mocked(getSessionUser).mockResolvedValueOnce({ id: 'user-1', band_id: 'band-1', supabase_id: 'sup-1' })
+    vi.mocked(getSessionUser).mockResolvedValueOnce({ id: 'user-1', band_id: 'band-1', supabase_id: 'sup-1', role: 'admin' })
     vi.mocked(prisma.user.findUnique).mockResolvedValueOnce({ role: 'admin' } as any)
 
     const existingEvent = {

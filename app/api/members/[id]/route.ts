@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { forbiddenUnlessStaff } from '@/lib/auth/roles'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { getSessionUser } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
@@ -10,6 +11,8 @@ export async function DELETE(
   const { id } = await params
   const sessionUser = await getSessionUser()
   if (!sessionUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const forbidden = forbiddenUnlessStaff(sessionUser)
+  if (forbidden) return forbidden
 
   const fullUser = await prisma.user.findUnique({
     where: { id: sessionUser.id },

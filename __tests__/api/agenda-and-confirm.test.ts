@@ -3,7 +3,7 @@ import { GET as GET_AGENDA } from '@/app/api/agenda/route'
 import { POST, GET as GET_CONFIRM } from '@/app/api/musicians/[id]/confirm/route'
 
 vi.mock('@/lib/auth/session', () => ({
-  getSessionUser: vi.fn().mockResolvedValue({ id: 'user-1', band_id: 'band-1', supabase_id: 'sup-1' }),
+  getSessionUser: vi.fn().mockResolvedValue({ id: 'user-1', band_id: 'band-1', supabase_id: 'sup-1', role: 'admin' }),
 }))
 
 vi.mock('@/lib/prisma', () => ({

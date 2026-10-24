@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { forbiddenUnlessStaff } from '@/lib/auth/roles'
 import { getSessionUser } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import { DEFAULT_FINANCE_ITEMS, serializeFinance } from '@/lib/financas'
@@ -7,6 +8,8 @@ import { reconcileTeamCosts } from '@/lib/finance-service'
 export async function GET(request: Request) {
   const sessionUser = await getSessionUser()
   if (!sessionUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const forbidden = forbiddenUnlessStaff(sessionUser)
+  if (forbidden) return forbidden
 
   const { searchParams } = new URL(request.url)
   const month = parseInt(searchParams.get('month') ?? String(new Date().getMonth() + 1), 10)
@@ -38,6 +41,8 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const sessionUser = await getSessionUser()
   if (!sessionUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const forbidden = forbiddenUnlessStaff(sessionUser)
+  if (forbidden) return forbidden
 
   const body = await request.json()
   const { event_id, product } = body

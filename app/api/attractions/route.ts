@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { forbiddenUnlessStaff } from '@/lib/auth/roles'
 import { createClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/prisma'
 import { attractionCreateSchema } from '@/lib/validations/attraction'
@@ -13,6 +14,8 @@ async function getSessionUser() {
 export async function GET() {
   const sessionUser = await getSessionUser()
   if (!sessionUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const forbidden = forbiddenUnlessStaff(sessionUser)
+  if (forbidden) return forbidden
 
   const attractions = await prisma.attraction.findMany({
     where: { band_id: sessionUser.band_id },
@@ -25,6 +28,8 @@ export async function GET() {
 export async function POST(request: Request) {
   const sessionUser = await getSessionUser()
   if (!sessionUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const forbidden = forbiddenUnlessStaff(sessionUser)
+  if (forbidden) return forbidden
 
   if (sessionUser.role !== 'admin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })

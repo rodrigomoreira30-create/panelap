@@ -1,5 +1,6 @@
 // app/api/dashboard/route.ts
 import { NextResponse } from 'next/server'
+import { forbiddenUnlessStaff } from '@/lib/auth/roles'
 import { createClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/prisma'
 import { EventStatus } from '@/lib/generated/prisma/enums'
@@ -65,6 +66,8 @@ export async function GET(request: Request) {
   if (!dbUser || !dbUser.band || dbUser.band.slug !== bandSlug) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
+  const forbidden = forbiddenUnlessStaff(dbUser)
+  if (forbidden) return forbidden
 
   const bandId = dbUser.band.id
   const raw = dbUser.band.pipeline_stages

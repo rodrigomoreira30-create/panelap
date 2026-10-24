@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { forbiddenUnlessStaff } from '@/lib/auth/roles'
 import { createClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/prisma'
 import { leadAttractionUpdateSchema } from '@/lib/validations/attraction'
@@ -16,6 +17,8 @@ export async function PATCH(
 ) {
   const sessionUser = await getSessionUser()
   if (!sessionUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const forbidden = forbiddenUnlessStaff(sessionUser)
+  if (forbidden) return forbidden
 
   if (!['admin', 'commercial'].includes(sessionUser.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -52,6 +55,8 @@ export async function DELETE(
 ) {
   const sessionUser = await getSessionUser()
   if (!sessionUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const forbidden = forbiddenUnlessStaff(sessionUser)
+  if (forbidden) return forbidden
 
   if (!['admin', 'commercial'].includes(sessionUser.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })

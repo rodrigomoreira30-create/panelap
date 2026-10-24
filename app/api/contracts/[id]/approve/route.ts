@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server'
+import { forbiddenUnlessStaff } from '@/lib/auth/roles'
 import { prisma } from '@/lib/prisma'
 import { getSessionUser } from '@/lib/auth/session'
-import { createZapSignDocument } from '@/lib/zapsign/client'
-import { fillTemplate, buildContractData } from '@/lib/contracts/template-fill'
 
+// Aprovação = marcar como enviado ao cliente. O envio para assinatura é feito fora do
+// sistema (sem integração de assinatura eletrônica); a assinatura é registrada depois
+// pelo PATCH /api/contracts/[id] com status 'signed'.
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -11,48 +13,26 @@ export async function POST(
   const { id } = await params
   const sessionUser = await getSessionUser()
   if (!sessionUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const forbidden = forbiddenUnlessStaff(sessionUser)
+  if (forbidden) return forbidden
 
   const contract = await prisma.contract.findFirst({
     where: { id, event: { band_id: sessionUser.band_id } },
-    include: { event: { include: { lead: true } }, template: true },
+    select: { id: true, status: true },
   })
 
   if (!contract) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const { event, template } = contract
-  const { lead } = event
-
-  if (!lead) {
+  if (contract.status !== 'draft' && contract.status !== 'pending_review') {
     return NextResponse.json(
-      { error: 'Lead not found for this event' },
-      { status: 422 }
+      { error: 'Contrato já foi enviado ou assinado' },
+      { status: 409 }
     )
   }
 
-  const filledContent = fillTemplate(template.content, buildContractData(lead))
-  const base64Content = Buffer.from(filledContent).toString('base64')
-
-  const zapDoc = await createZapSignDocument({
-    name: `Contrato - ${event.client_name}`,
-    content: base64Content,
-    signers: [
-      {
-        name: lead.client_name,
-        email: '',
-        phone_country: '55',
-        phone_number: lead.phone,
-      },
-    ],
-  })
-
   const updated = await prisma.contract.update({
     where: { id },
-    data: {
-      zapsign_doc_id: zapDoc.token,
-      zapsign_link: zapDoc.signers[0]?.sign_url ?? null,
-      status: 'sent',
-      reviewed_by: sessionUser.id,
-    },
+    data: { status: 'sent', reviewed_by: sessionUser.id },
   })
 
   return NextResponse.json({ data: updated })

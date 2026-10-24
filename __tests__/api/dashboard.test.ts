@@ -46,6 +46,7 @@ describe('GET /api/dashboard', () => {
     const { prisma } = await import('@/lib/prisma')
     vi.mocked(prisma.user.findUnique).mockResolvedValue({
       band: { id: 'band-1', slug: 'sapo', pipeline_stages: [] },
+      role: 'admin',
     } as any)
     vi.mocked(prisma.lead.count).mockResolvedValue(4)
     vi.mocked(prisma.lead.findMany).mockResolvedValue([
