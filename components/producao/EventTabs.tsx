@@ -12,6 +12,7 @@ import { EventAlignmentNotes } from './EventAlignmentNotes'
 import { EventFinanceTab } from './EventFinanceTab'
 import type { EventCancellation } from './EventCancellationControl'
 import { shouldConfirmTabChange } from '@/lib/production/alignment-notes'
+import type { EventTab } from '@/lib/production/event-tab'
 
 const eventTypeLabels: Record<string, string> = {
   wedding: 'Casamento', party: 'Festa', show: 'Show',
@@ -28,7 +29,7 @@ const statusColors: Record<string, string> = {
   done:       'bg-gray-100 text-gray-600',
 }
 
-type Tab = 'geral' | 'formacao' | 'anexos' | 'financeiro' | 'tarefas' | 'chat'
+type Tab = EventTab
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'geral',       label: 'Geral' },
@@ -90,6 +91,9 @@ interface EventTabsProps {
 
   // Alinhamento (Geral)
   initialNotes: string | null
+
+  // Aba aberta ao carregar (ex.: ?tab=financeiro vindo do Financeiro Geral)
+  initialTab?: Tab
 }
 
 function PlaceholderTab({ label }: { label: string }) {
@@ -116,8 +120,9 @@ export function EventTabs({
   initialTeamNotes,
   initialDocs,
   initialNotes,
+  initialTab = 'geral',
 }: EventTabsProps) {
-  const [tab, setTab] = useState<Tab>('geral')
+  const [tab, setTab] = useState<Tab>(initialTab)
   const [cancellation, setCancellation] = useState<EventCancellation>(initialCancellation)
   const cancelled = cancellation.cancelled_at != null
   // "Alinhamentos do Evento" (aba Geral) agora salva só ao clicar em Salvar — se o usuário

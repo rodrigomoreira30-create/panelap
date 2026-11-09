@@ -1,9 +1,42 @@
 'use client'
 
-import { useRouter, useParams } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { Trash2 } from 'lucide-react'
 import { fmt, DEFAULT_FINANCE_ITEMS, computeEventFinance, computeReceivedAmount, resolveItemAmount, type EventFinanceData } from '@/lib/financas'
 import { buildTeamMatrixRows, TEAM_CATEGORY_ORDER, TEAM_CATEGORY_LABELS } from '@/lib/financas-team-matrix'
+
+/**
+ * Célula de valor de um evento. Quando há evento vinculado, o conteúdo é um link nativo
+ * para o Financeiro do evento aberto em NOVA ABA — o Financeiro Geral fica intacto
+ * (mês, rolagem, filtros) e o usuário mantém Cmd/Ctrl+clique, botão do meio e
+ * "Abrir em nova aba" do navegador. O padding fica no <a> para a área clicável ser a célula toda.
+ */
+function EventCell({
+  href,
+  padding = 'px-3 py-2',
+  className,
+  children,
+}: {
+  href: string | null
+  padding?: string
+  className: string
+  children: React.ReactNode
+}) {
+  if (!href) return <td className={`${padding} ${className}`}>{children}</td>
+  return (
+    <td className={`p-0 hover:bg-gray-100 ${className}`}>
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`block ${padding}`}
+        title="Abrir financeiro do evento em nova aba"
+      >
+        {children}
+      </a>
+    </td>
+  )
+}
 
 interface FinanceTableProps {
   finances: EventFinanceData[]
@@ -12,12 +45,11 @@ interface FinanceTableProps {
 }
 
 export function FinanceTable({ finances, onFinanceDeleted }: FinanceTableProps) {
-  const router = useRouter()
   const { bandSlug } = useParams<{ bandSlug: string }>()
 
-  function openEvent(financeEventId: string | null) {
-    if (!financeEventId) return
-    router.push(`/${bandSlug}/producao/${financeEventId}?tab=financeiro`)
+  function eventHref(financeEventId: string | null) {
+    if (!financeEventId) return null
+    return `/${bandSlug}/producao/${financeEventId}?tab=financeiro`
   }
 
   async function deleteFinance(id: string) {
@@ -68,14 +100,13 @@ export function FinanceTable({ finances, onFinanceDeleted }: FinanceTableProps) 
           <tr className="border-b hover:bg-gray-50">
             <td className="px-3 py-2 sticky left-0 bg-white text-gray-700 font-medium z-10">Receita prevista</td>
             {finances.map(f => (
-              <td
+              <EventCell
                 key={f.id}
-                onClick={() => openEvent(f.event_id)}
-                className="px-3 py-2 text-right text-xs font-medium tabular-nums text-green-700 cursor-pointer hover:bg-gray-100"
-                title="Abrir evento"
+                href={eventHref(f.event_id)}
+                className="text-right text-xs font-medium tabular-nums text-green-700"
               >
                 {fmt(f.expected_revenue)}
-              </td>
+              </EventCell>
             ))}
             <td className="px-3 py-2 text-right font-semibold text-green-700 tabular-nums bg-gray-50">
               {fmt(finances.reduce((s, f) => s + f.expected_revenue, 0))}
@@ -86,14 +117,13 @@ export function FinanceTable({ finances, onFinanceDeleted }: FinanceTableProps) 
           <tr className="border-b hover:bg-gray-50">
             <td className="px-3 py-2 sticky left-0 bg-white text-gray-700 font-medium z-10">Valor recebido</td>
             {finances.map(f => (
-              <td
+              <EventCell
                 key={f.id}
-                onClick={() => openEvent(f.event_id)}
-                className="px-3 py-2 text-right text-xs font-medium tabular-nums text-green-600 cursor-pointer hover:bg-gray-100"
-                title="Abrir evento"
+                href={eventHref(f.event_id)}
+                className="text-right text-xs font-medium tabular-nums text-green-600"
               >
                 {fmt(computeReceivedAmount(f))}
-              </td>
+              </EventCell>
             ))}
             <td className="px-3 py-2 text-right font-semibold text-green-600 tabular-nums bg-gray-50">
               {fmt(finances.reduce((s, f) => s + computeReceivedAmount(f), 0))}
@@ -104,14 +134,13 @@ export function FinanceTable({ finances, onFinanceDeleted }: FinanceTableProps) 
           <tr className="border-b bg-blue-50/60">
             <td className="px-3 py-2 sticky left-0 bg-blue-50 text-blue-700 font-medium z-10">Saldo a receber</td>
             {finances.map(f => (
-              <td
+              <EventCell
                 key={f.id}
-                onClick={() => openEvent(f.event_id)}
-                className="px-3 py-2 text-right text-xs font-medium tabular-nums text-blue-600 cursor-pointer hover:bg-gray-100"
-                title="Abrir evento"
+                href={eventHref(f.event_id)}
+                className="text-right text-xs font-medium tabular-nums text-blue-600"
               >
                 {fmt(computeEventFinance(f).receivable)}
-              </td>
+              </EventCell>
             ))}
             <td className="px-3 py-2 text-right font-semibold text-blue-600 tabular-nums bg-blue-50">
               {fmt(finances.reduce((s, f) => s + computeEventFinance(f).receivable, 0))}
@@ -133,28 +162,26 @@ export function FinanceTable({ finances, onFinanceDeleted }: FinanceTableProps) 
                 const item = f.items.find(i => i.category === def.category)
                 if (!item) {
                   return (
-                    <td
+                    <EventCell
                       key={f.id}
-                      onClick={() => openEvent(f.event_id)}
-                      className="px-3 py-2 text-right text-gray-300 cursor-pointer hover:bg-gray-100"
-                      title="Abrir evento"
+                      href={eventHref(f.event_id)}
+                      className="text-right text-gray-300"
                     >
                       —
-                    </td>
+                    </EventCell>
                   )
                 }
                 const resolved = resolveItemAmount(item, f.expected_revenue)
                 return (
-                  <td
+                  <EventCell
                     key={f.id}
-                    onClick={() => openEvent(f.event_id)}
-                    className={`px-3 py-2 text-right text-xs font-medium tabular-nums cursor-pointer hover:bg-gray-100 ${
+                    href={eventHref(f.event_id)}
+                    className={`text-right text-xs font-medium tabular-nums ${
                       item.paid ? 'text-green-600' : resolved > 0 ? 'text-red-600' : 'text-gray-400'
                     }`}
-                    title="Abrir evento"
                   >
                     {fmt(resolved)}
-                  </td>
+                  </EventCell>
                 )
               })}
               <td className="px-3 py-2 text-right text-red-600 tabular-nums bg-gray-50">
@@ -201,27 +228,25 @@ export function FinanceTable({ finances, onFinanceDeleted }: FinanceTableProps) 
                         const cell = row.cellsByFinanceId[f.id]
                         if (!cell) {
                           return (
-                            <td
+                            <EventCell
                               key={f.id}
-                              onClick={() => openEvent(f.event_id)}
-                              className="px-3 py-2 text-center text-gray-300 cursor-pointer hover:bg-gray-100"
-                              title="Abrir evento"
+                              href={eventHref(f.event_id)}
+                              className="text-center text-gray-300"
                             >
                               —
-                            </td>
+                            </EventCell>
                           )
                         }
                         return (
-                          <td
+                          <EventCell
                             key={f.id}
-                            onClick={() => openEvent(f.event_id)}
-                            className={`px-3 py-2 text-right text-xs font-medium tabular-nums cursor-pointer hover:bg-gray-100 ${
+                            href={eventHref(f.event_id)}
+                            className={`text-right text-xs font-medium tabular-nums ${
                               cell.paid ? 'text-green-600' : 'text-red-600'
                             }`}
-                            title="Abrir evento"
                           >
                             {fmt(cell.amount)}
-                          </td>
+                          </EventCell>
                         )
                       })}
                       <td className="px-3 py-2 text-right text-red-600 tabular-nums bg-gray-50">
@@ -239,9 +264,9 @@ export function FinanceTable({ finances, onFinanceDeleted }: FinanceTableProps) 
           <tr className="bg-red-50/60 border-b">
             <td className="px-3 py-2 sticky left-0 bg-red-50 text-red-700 font-semibold z-10">Total de custos</td>
             {finances.map(f => (
-              <td key={f.id} className="px-3 py-2 text-right text-red-700 font-semibold tabular-nums">
+              <EventCell key={f.id} href={eventHref(f.event_id)} className="text-right text-red-700 font-semibold tabular-nums">
                 {fmt(computeEventFinance(f).costTotal)}
-              </td>
+              </EventCell>
             ))}
             <td className="px-3 py-2 text-right text-red-700 font-semibold tabular-nums bg-red-50">
               {fmt(finances.reduce((s, f) => s + computeEventFinance(f).costTotal, 0))}
@@ -254,9 +279,9 @@ export function FinanceTable({ finances, onFinanceDeleted }: FinanceTableProps) 
             {finances.map(f => {
               const { profit } = computeEventFinance(f)
               return (
-                <td key={f.id} className={`px-3 py-2 text-right font-medium tabular-nums ${profit >= 0 ? 'text-green-700' : 'text-red-600'}`}>
+                <EventCell key={f.id} href={eventHref(f.event_id)} className={`text-right font-medium tabular-nums ${profit >= 0 ? 'text-green-700' : 'text-red-600'}`}>
                   {fmt(profit)}
-                </td>
+                </EventCell>
               )
             })}
             <td className={`px-3 py-2 text-right font-semibold tabular-nums bg-gray-50 ${
@@ -272,9 +297,9 @@ export function FinanceTable({ finances, onFinanceDeleted }: FinanceTableProps) 
             {finances.map(f => {
               const { cashProfit } = computeEventFinance(f)
               return (
-                <td key={f.id} className={`px-3 py-3 text-right font-bold tabular-nums ${cashProfit >= 0 ? 'text-green-700' : 'text-red-600'}`}>
+                <EventCell key={f.id} href={eventHref(f.event_id)} padding="px-3 py-3" className={`text-right font-bold tabular-nums ${cashProfit >= 0 ? 'text-green-700' : 'text-red-600'}`}>
                   {fmt(cashProfit)}
-                </td>
+                </EventCell>
               )
             })}
             <td className={`px-3 py-3 text-right font-bold tabular-nums bg-gray-100 ${

@@ -140,3 +140,62 @@ describe('FinanceTable — matriz "Equipe / Cachês" agrupada por membro + funç
     expect(screen.getByText('Produção / Técnica')).toBeInTheDocument()
   })
 })
+
+describe('FinanceTable — valores abrem o Financeiro do evento em nova aba', () => {
+  function linksIn(rowLabel: string) {
+    const row = within(screen.getByText(rowLabel).closest('tr')!)
+    return row.queryAllByRole('link') as HTMLAnchorElement[]
+  }
+
+  const tresEventos = () => [
+    finance({ id: 'fa', event_id: 'ev-lucas', name: 'Lucas & Sabrina', expected_revenue: 10000,
+      items: [{ id: 't1', finance_id: 'fa', category: 'transporte', label: 'Transporte', amount: 500, paid: false, notes: null, percent_of_revenue: null, is_overridden: false, event_musician_id: null }] }),
+    finance({ id: 'fb', event_id: 'ev-mauro', name: 'Mauro César', expected_revenue: 12000 }),
+    finance({ id: 'fc', event_id: 'ev-mateus', name: 'Mateus', expected_revenue: 9000 }),
+  ]
+
+  it('Transporte (R$ 500,00 de Lucas & Sabrina) é um link nativo para o Financeiro do evento, em nova aba', () => {
+    render(<FinanceTable finances={tresEventos()} onFinanceUpdated={() => {}} onFinanceDeleted={() => {}} />)
+    const link = within(screen.getByText('Transporte').closest('tr')!).getByRole('link', { name: '500,00' })
+    expect(link).toHaveAttribute('href', '/banda-teste/producao/ev-lucas?tab=financeiro')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+  })
+
+  it('cada coluna aponta para o ID do seu próprio evento (Receita prevista)', () => {
+    render(<FinanceTable finances={tresEventos()} onFinanceUpdated={() => {}} onFinanceDeleted={() => {}} />)
+    expect(linksIn('Receita prevista').map(a => a.getAttribute('href'))).toEqual([
+      '/banda-teste/producao/ev-lucas?tab=financeiro',
+      '/banda-teste/producao/ev-mauro?tab=financeiro',
+      '/banda-teste/producao/ev-mateus?tab=financeiro',
+    ])
+  })
+
+  it.each(['Valor recebido', 'Saldo a receber', 'Total de custos', 'Lucro previsto', 'Lucro real'])(
+    '"%s" tem um link por evento, todos em nova aba (coluna Total mês sem link)',
+    label => {
+      render(<FinanceTable finances={tresEventos()} onFinanceUpdated={() => {}} onFinanceDeleted={() => {}} />)
+      const links = linksIn(label)
+      expect(links).toHaveLength(3)
+      links.forEach(a => expect(a).toHaveAttribute('target', '_blank'))
+    },
+  )
+
+  it('cachê de músico em Custos personalizados abre o evento correspondente', () => {
+    const andre = { user_id: 'user-andre', instrument: 'Bateria' }
+    const finances = [
+      finance({ id: 'a', event_id: 'ev-a', name: 'Evento A', items: [] }),
+      finance({ id: 'b', event_id: 'ev-b', name: 'Evento B', items: [cacheItem({ id: 'i2', label: 'Bateria — Andre Batera', amount: 500, event_musician: andre })] }),
+    ]
+    render(<FinanceTable finances={finances} onFinanceUpdated={() => {}} onFinanceDeleted={() => {}} />)
+    const link = within(screen.getByText('Bateria — Andre Batera').closest('tr')!).getByRole('link', { name: '500,00' })
+    expect(link).toHaveAttribute('href', '/banda-teste/producao/ev-b?tab=financeiro')
+    expect(link).toHaveAttribute('target', '_blank')
+  })
+
+  it('financeiro sem evento vinculado não gera link (mantém o valor exibido)', () => {
+    render(<FinanceTable finances={[finance({ event_id: null })]} onFinanceUpdated={() => {}} onFinanceDeleted={() => {}} />)
+    expect(screen.queryAllByRole('link')).toHaveLength(0)
+    expect(screen.getAllByText('18.800,00').length).toBeGreaterThan(0)
+  })
+})

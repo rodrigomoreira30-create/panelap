@@ -3,13 +3,17 @@ import { prisma } from '@/lib/prisma'
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import { EventTabs } from '@/components/producao/EventTabs'
+import { parseInitialTab } from '@/lib/production/event-tab'
 
 export default async function EventDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ bandSlug: string; eventoId: string }>
+  searchParams?: Promise<{ tab?: string | string[] }>
 }) {
   const { eventoId } = await params
+  const initialTab = parseInitialTab((await searchParams)?.tab)
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -107,6 +111,7 @@ export default async function EventDetailPage({
           created_at: d.created_at.toISOString(),
         }))}
         initialNotes={event.notes ?? null}
+        initialTab={initialTab}
       />
     </HydrationBoundary>
   )
