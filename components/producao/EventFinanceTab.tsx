@@ -5,12 +5,14 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { CheckCircle2, Circle } from 'lucide-react'
 import { Textarea } from '@/components/ui/textarea'
 import { EventPaymentsSection } from './EventPaymentsSection'
+import { EventTransportCosts } from './EventTransportCosts'
 import {
   fmt,
   parseBR,
   DEFAULT_FINANCE_ITEMS,
   PERCENT_ELIGIBLE_CATEGORIES,
   CACHE_MUSICO_CATEGORY,
+  TRANSPORTE_CATEGORY,
   computeTeamTotal,
   resolveItemAmount,
   type EventFinanceData,
@@ -129,7 +131,9 @@ export function EventFinanceTab({ eventoId }: { eventoId: string }) {
   }
 
   async function patchItem(itemId: string, patch: Record<string, unknown>) {
-    trigger(itemId, async () => {
+    // Chave por item + campos: editar nome e marcar pago do mesmo item em sequência
+    // não pode descartar a primeira alteração no debounce do autosave.
+    trigger(`${itemId}:${Object.keys(patch).join(',')}`, async () => {
       try {
         const res = await fetch(`/api/financas/${data!.data.id}/items/${itemId}`, {
           method: 'PATCH',
@@ -263,6 +267,18 @@ export function EventFinanceTab({ eventoId }: { eventoId: string }) {
         <h3 className="text-sm font-semibold text-gray-900 mb-3">Outros custos</h3>
         <div className="space-y-2">
           {otherItems.map(({ def, item }) => {
+            if (def.category === TRANSPORTE_CATEGORY) {
+              return (
+                <EventTransportCosts
+                  key={def.category}
+                  financeId={finance.id}
+                  items={finance.items}
+                  revenueForecast={finance.expected_revenue}
+                  onPatchItem={patchItem}
+                  onChange={() => queryClient.invalidateQueries({ queryKey })}
+                />
+              )
+            }
             const percentEligible = PERCENT_ELIGIBLE_CATEGORIES.has(def.category)
             return (
               <div

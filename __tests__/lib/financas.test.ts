@@ -4,6 +4,7 @@ import {
   computeReceivedAmount,
   calcTotals,
   resolveItemAmount,
+  summarizeCategory,
   type EventFinanceData,
   type FinanceItemData,
   type EventPaymentData,
@@ -304,5 +305,76 @@ describe('resolveItemAmount', () => {
 
   it('percent_of_revenue igual a 0 resolve para 0, não cai no amount gravado', () => {
     expect(resolveItemAmount(item({ percent_of_revenue: 0, amount: 500 }), 1000)).toBe(0)
+  })
+})
+
+describe('summarizeCategory — detalhamento de Transporte', () => {
+  const transportes = [
+    item({ id: 't1', category: 'transporte', label: 'Carro 1 — João',  amount: 300, paid: true }),
+    item({ id: 't2', category: 'transporte', label: 'Carro 2 — Carlos', amount: 350 }),
+    item({ id: 'h1', category: 'hospedagem', label: 'Hospedagem', amount: 1000, paid: true }),
+    item({ id: 't3', category: 'transporte', label: 'Carro 3 — Marcos', amount: 250 }),
+  ]
+
+  it('soma apenas os itens da categoria, separando pago e pendente', () => {
+    const s = summarizeCategory(transportes, 'transporte', 10000)
+    expect(s.items.map(i => i.id)).toEqual(['t1', 't2', 't3'])
+    expect(s.total).toBe(900)
+    expect(s.paidTotal).toBe(300)
+    expect(s.pendingTotal).toBe(600)
+    expect(s.allPaid).toBe(false)
+  })
+
+  it('allPaid só é verdadeiro quando todos os itens com valor estão pagos', () => {
+    const s = summarizeCategory([
+      item({ id: 'a', category: 'transporte', amount: 300, paid: true }),
+      item({ id: 'b', category: 'transporte', amount: 0 }),
+    ], 'transporte', 0)
+    expect(s.allPaid).toBe(true)
+    expect(summarizeCategory([], 'transporte', 0).allPaid).toBe(false)
+  })
+
+  it('evento legado com um único item de Transporte mantém valor e status, sem duplicar', () => {
+    const legado = [item({ id: 'old', category: 'transporte', label: 'Transporte', amount: 900, paid: true })]
+    const s = summarizeCategory(legado, 'transporte', 5000)
+    expect(s.total).toBe(900)
+    expect(s.paidTotal).toBe(900)
+    expect(s.allPaid).toBe(true)
+  })
+
+  it('total da categoria é igual a costByCategory e o detalhamento não altera custos, lucro e margem', () => {
+    const umItem = finance({
+      expected_revenue: 5000,
+      items: [item({ id: 'old', category: 'transporte', amount: 900 }), item({ id: 'h', category: 'hospedagem', amount: 600 })],
+    })
+    const detalhado = finance({
+      expected_revenue: 5000,
+      items: [
+        item({ id: 'a', category: 'transporte', amount: 300 }),
+        item({ id: 'b', category: 'transporte', amount: 350 }),
+        item({ id: 'c', category: 'transporte', amount: 250 }),
+        item({ id: 'h', category: 'hospedagem', amount: 600 }),
+      ],
+    })
+    const antes = computeEventFinance(umItem)
+    const depois = computeEventFinance(detalhado)
+    expect(summarizeCategory(detalhado.items, 'transporte', 5000).total).toBe(depois.costByCategory.transporte)
+    expect(depois.costTotal).toBe(antes.costTotal)
+    expect(depois.profit).toBe(antes.profit)
+    expect(depois.marginPercent).toBe(antes.marginPercent)
+  })
+
+  it('marcar transporte como pago muda o saldo em caixa, mas não custos previstos nem recebimentos', () => {
+    const base = finance({
+      expected_revenue: 5000, received_amount: 2000,
+      items: [item({ id: 'a', category: 'transporte', amount: 300 }), item({ id: 'b', category: 'transporte', amount: 350 })],
+    })
+    const pago = { ...base, items: base.items.map(i => i.id === 'a' ? { ...i, paid: true } : i) }
+    const t0 = computeEventFinance(base)
+    const t1 = computeEventFinance(pago)
+    expect(t1.costTotal).toBe(t0.costTotal)
+    expect(t1.received).toBe(t0.received)
+    expect(t1.receivable).toBe(t0.receivable)
+    expect(t1.cashProfit).toBe(t0.cashProfit - 300)
   })
 })

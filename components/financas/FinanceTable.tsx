@@ -2,7 +2,7 @@
 
 import { useParams } from 'next/navigation'
 import { Trash2 } from 'lucide-react'
-import { fmt, DEFAULT_FINANCE_ITEMS, computeEventFinance, computeReceivedAmount, resolveItemAmount, type EventFinanceData } from '@/lib/financas'
+import { fmt, DEFAULT_FINANCE_ITEMS, computeEventFinance, computeReceivedAmount, summarizeCategory, type EventFinanceData } from '@/lib/financas'
 import { buildTeamMatrixRows, TEAM_CATEGORY_ORDER, TEAM_CATEGORY_LABELS } from '@/lib/financas-team-matrix'
 
 /**
@@ -159,8 +159,10 @@ export function FinanceTable({ finances, onFinanceDeleted }: FinanceTableProps) 
             <tr key={def.category} className="border-b hover:bg-gray-50">
               <td className="px-3 py-2 sticky left-0 bg-white text-gray-600 z-10">{def.label}</td>
               {finances.map(f => {
-                const item = f.items.find(i => i.category === def.category)
-                if (!item) {
+                // Uma categoria pode ter vários itens (ex.: Transporte detalhado por carro) —
+                // a célula mostra sempre a soma, nunca uma linha por item.
+                const summary = summarizeCategory(f.items, def.category, f.expected_revenue)
+                if (summary.items.length === 0) {
                   return (
                     <EventCell
                       key={f.id}
@@ -171,24 +173,20 @@ export function FinanceTable({ finances, onFinanceDeleted }: FinanceTableProps) 
                     </EventCell>
                   )
                 }
-                const resolved = resolveItemAmount(item, f.expected_revenue)
                 return (
                   <EventCell
                     key={f.id}
                     href={eventHref(f.event_id)}
                     className={`text-right text-xs font-medium tabular-nums ${
-                      item.paid ? 'text-green-600' : resolved > 0 ? 'text-red-600' : 'text-gray-400'
+                      summary.allPaid ? 'text-green-600' : summary.pendingTotal > 0 ? 'text-red-600' : 'text-gray-400'
                     }`}
                   >
-                    {fmt(resolved)}
+                    {fmt(summary.total)}
                   </EventCell>
                 )
               })}
               <td className="px-3 py-2 text-right text-red-600 tabular-nums bg-gray-50">
-                {fmt(finances.reduce((s, f) => {
-                  const item = f.items.find(i => i.category === def.category)
-                  return s + (item ? resolveItemAmount(item, f.expected_revenue) : 0)
-                }, 0))}
+                {fmt(finances.reduce((s, f) => s + summarizeCategory(f.items, def.category, f.expected_revenue).total, 0))}
               </td>
             </tr>
           ))}

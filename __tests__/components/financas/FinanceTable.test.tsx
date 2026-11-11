@@ -199,3 +199,43 @@ describe('FinanceTable — valores abrem o Financeiro do evento em nova aba', ()
     expect(screen.getAllByText('18.800,00').length).toBeGreaterThan(0)
   })
 })
+
+describe('FinanceTable — Transporte detalhado (vários itens na categoria)', () => {
+  function transporte(id: string, label: string, amount: number, paid = false) {
+    return {
+      id, finance_id: 'finance-1', category: 'transporte', label, amount, paid, notes: null,
+      percent_of_revenue: null, is_overridden: false, event_musician_id: null,
+    }
+  }
+
+  it('exibe uma única linha Transporte com a soma dos itens do evento, sem linhas separadas', () => {
+    const f = finance({
+      name: 'Lucas & Sabrina',
+      items: [
+        transporte('t1', 'Carro 1 — João', 300, true),
+        transporte('t2', 'Carro 2 — Carlos', 350),
+        transporte('t3', 'Carro 3 — Marcos', 250),
+      ],
+    })
+
+    render(<FinanceTable finances={[f]} onFinanceUpdated={() => {}} onFinanceDeleted={() => {}} />)
+
+    const row = screen.getByText('Transporte').closest('tr')!
+    // coluna do evento + Total mês
+    expect(within(row).getAllByText('900,00')).toHaveLength(2)
+    expect(within(row).getAllByText('900,00')[0].closest('td')!.className).toContain('text-red-600')
+    expect(screen.queryByText('Carro 1 — João')).not.toBeInTheDocument()
+    expect(screen.queryByText('300,00')).not.toBeInTheDocument()
+  })
+
+  it('fica verde quando todos os transportes estão pagos', () => {
+    const f = finance({
+      items: [transporte('t1', 'A', 300, true), transporte('t2', 'B', 350, true)],
+    })
+
+    render(<FinanceTable finances={[f]} onFinanceUpdated={() => {}} onFinanceDeleted={() => {}} />)
+
+    const row = screen.getByText('Transporte').closest('tr')!
+    expect(within(row).getAllByText('650,00')[0].closest('td')!.className).toContain('text-green-600')
+  })
+})

@@ -178,6 +178,45 @@ export function resolveItemAmount(item: FinanceItemData, revenueForecast: number
   return item.amount
 }
 
+export const TRANSPORTE_CATEGORY = 'transporte'
+
+export type CategorySummary = {
+  items: FinanceItemData[]
+  total: number
+  paidTotal: number
+  pendingTotal: number
+  /** Nada pendente e ao menos um item pago — com um único item, equivale a `item.paid`. */
+  allPaid: boolean
+}
+
+/** Resumo de uma categoria que pode ter vários itens (ex.: Transporte detalhado por carro).
+ * Usa o mesmo `resolveItemAmount` de `computeEventFinance`, então `total` é sempre igual a
+ * `costByCategory[category]` — Financeiro do evento e Financeiro Geral exibem o mesmo valor. */
+export function summarizeCategory(
+  items: FinanceItemData[],
+  category: string,
+  revenueForecast: number,
+): CategorySummary {
+  const own = items.filter(i => i.category === category)
+  let total = 0
+  let paidTotal = 0
+  for (const item of own) {
+    const amount = resolveItemAmount(item, revenueForecast)
+    total += amount
+    if (item.paid) paidTotal += amount
+  }
+  total = round2(total)
+  paidTotal = round2(paidTotal)
+  const pendingTotal = round2(total - paidTotal)
+  return {
+    items: own,
+    total,
+    paidTotal,
+    pendingTotal,
+    allPaid: pendingTotal <= 0 && own.some(i => i.paid),
+  }
+}
+
 export type EventFinanceTotals = {
   revenueForecast: number
   received: number
